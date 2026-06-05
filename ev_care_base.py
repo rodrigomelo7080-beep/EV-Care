@@ -68,7 +68,145 @@ DADOS_VEICULOS = {
     }
 }
 
-REVISAO_PADRAO_GENERICA = {"Revisão Geral": 10000, "Filtro de Cabine": 20000, "Fluido de Freio": 40000, "Inspeção de Bateria": 20000}
+# =============================================================================
+# PLANO GERAL DE MANUTENÇÃO PARA VEÍCULOS ELÉTRICOS
+# Intervalos genéricos baseados em práticas comuns de manutenção EV.
+# O app permite edição manual por veículo.
+# =============================================================================
+
+MANUTENCOES_EV_DETALHADAS = {
+    "Rodízio de Pneus": {
+        "categoria": "Pneus e Rodagem",
+        "intervalo_km": 10000,
+        "intervalo_meses": 12,
+        "criticidade": "Alta",
+        "descricao": "Ajuda a manter desgaste uniforme, autonomia e segurança."
+    },
+    "Inspeção de Pneus e Calibragem": {
+        "categoria": "Pneus e Rodagem",
+        "intervalo_km": 5000,
+        "intervalo_meses": 1,
+        "criticidade": "Alta",
+        "descricao": "Verificar pressão, desgaste irregular, bolhas, cortes e profundidade dos sulcos."
+    },
+    "Alinhamento e Balanceamento": {
+        "categoria": "Pneus e Rodagem",
+        "intervalo_km": 20000,
+        "intervalo_meses": 12,
+        "criticidade": "Média",
+        "descricao": "Recomendado quando houver desgaste irregular, vibração ou direção puxando."
+    },
+    "Filtro de Cabine": {
+        "categoria": "Conforto e Ar-condicionado",
+        "intervalo_km": 20000,
+        "intervalo_meses": 12,
+        "criticidade": "Média",
+        "descricao": "Mantém qualidade do ar interno e eficiência do sistema de climatização."
+    },
+    "Palhetas do Limpador": {
+        "categoria": "Visibilidade e Segurança",
+        "intervalo_km": 12000,
+        "intervalo_meses": 12,
+        "criticidade": "Média",
+        "descricao": "Substituir se houver ruído, falhas de limpeza ou ressecamento."
+    },
+    "Fluido de Freio": {
+        "categoria": "Freios",
+        "intervalo_km": 40000,
+        "intervalo_meses": 24,
+        "criticidade": "Alta",
+        "descricao": "Fluido higroscópico; deve ser verificado/substituído conforme contaminação e prazo."
+    },
+    "Inspeção de Pastilhas, Discos e Pinças": {
+        "categoria": "Freios",
+        "intervalo_km": 20000,
+        "intervalo_meses": 12,
+        "criticidade": "Alta",
+        "descricao": "Regeneração reduz desgaste, mas o sistema físico ainda precisa inspeção."
+    },
+    "Limpeza e Lubrificação das Pinças de Freio": {
+        "categoria": "Freios",
+        "intervalo_km": 20000,
+        "intervalo_meses": 12,
+        "criticidade": "Média",
+        "descricao": "Importante em regiões úmidas, litorâneas ou com corrosão."
+    },
+    "Revisão Geral EV": {
+        "categoria": "Inspeção Geral",
+        "intervalo_km": 20000,
+        "intervalo_meses": 12,
+        "criticidade": "Alta",
+        "descricao": "Inspeção geral de segurança, suspensão, direção, luzes, fluidos e sistemas EV."
+    },
+    "Checkup do Sistema de Alta Tensão": {
+        "categoria": "Sistema Elétrico EV",
+        "intervalo_km": 20000,
+        "intervalo_meses": 12,
+        "criticidade": "Alta",
+        "descricao": "Inspeção visual e diagnóstica de bateria HV, cabos, conectores e alertas."
+    },
+    "Inspeção da Porta de Recarga e Vedação": {
+        "categoria": "Sistema de Recarga",
+        "intervalo_km": 20000,
+        "intervalo_meses": 12,
+        "criticidade": "Média",
+        "descricao": "Verificar conector, tampa, vedação, sujeira, oxidação e encaixe do plugue."
+    },
+    "Inspeção da Bateria 12V": {
+        "categoria": "Sistema Elétrico EV",
+        "intervalo_km": 20000,
+        "intervalo_meses": 12,
+        "criticidade": "Alta",
+        "descricao": "A bateria auxiliar alimenta módulos, acessórios e sistemas de controle."
+    },
+    "Inspeção do Sistema de Arrefecimento EV": {
+        "categoria": "Arrefecimento e Térmica",
+        "intervalo_km": 40000,
+        "intervalo_meses": 24,
+        "criticidade": "Alta",
+        "descricao": "Verificar nível, vazamentos e condição do fluido térmico da bateria/inversor/motor."
+    },
+    "Substituição do Líquido de Arrefecimento EV": {
+        "categoria": "Arrefecimento e Térmica",
+        "intervalo_km": 150000,
+        "intervalo_meses": 60,
+        "criticidade": "Alta",
+        "descricao": "Intervalo varia muito por fabricante; confirmar no manual do veículo."
+    },
+    "Inspeção do Óleo do Redutor / Unidade de Tração": {
+        "categoria": "Powertrain EV",
+        "intervalo_km": 60000,
+        "intervalo_meses": 36,
+        "criticidade": "Média",
+        "descricao": "Alguns EVs possuem óleo do redutor/eixo elétrico com inspeção ou troca programada."
+    },
+    "Atualizações de Software e Diagnóstico": {
+        "categoria": "Software e Diagnóstico",
+        "intervalo_km": 20000,
+        "intervalo_meses": 12,
+        "criticidade": "Média",
+        "descricao": "Verificar alertas, campanhas, recalls, atualização de módulos e falhas registradas."
+    },
+    "Inspeção de Suspensão e Direção": {
+        "categoria": "Chassi e Segurança",
+        "intervalo_km": 20000,
+        "intervalo_meses": 12,
+        "criticidade": "Alta",
+        "descricao": "Verificar buchas, pivôs, terminais, amortecedores, ruídos e folgas."
+    },
+    "Fluido do Lavador do Para-brisa": {
+        "categoria": "Visibilidade e Segurança",
+        "intervalo_km": 5000,
+        "intervalo_meses": 1,
+        "criticidade": "Baixa",
+        "descricao": "Completar reservatório e verificar funcionamento dos esguichos."
+    }
+}
+
+REVISAO_PADRAO_GENERICA = {
+    item: dados["intervalo_km"]
+    for item, dados in MANUTENCOES_EV_DETALHADAS.items()
+}
 FATOR_DEGRADACAO_PADRAO = 35000
 FACTOR_DEGRADACAO_PADRAO = FATOR_DEGRADACAO_PADRAO
 
@@ -268,12 +406,27 @@ class VeiculoEV:
             return False
 
     def registrar_servico(self, item):
+        """
+        Registra uma manutenção como realizada exatamente na KM atual do veículo.
+
+        Regra:
+        - A última revisão do item passa a ser a KM atual.
+        - A próxima manutenção será:
+          KM atual + intervalo do serviço.
+        """
         if item in self.plano:
-            self.ultima_revisao[item] = self.km_atual
+            self.ultima_revisao[item] = int(self.km_atual)
+
             data = datetime.now().strftime("%d/%m/%Y %H:%M")
-            self.historico.append(f"[{data}] {item} aos {self.km_atual} km")
+
+            self.historico.append(
+                f"[{data}] {item} aos {self.km_atual} km"
+            )
+
             return True
+
         return False
+
 
     def verificar_revisoes_pendentes(self):
         pendentes = []
