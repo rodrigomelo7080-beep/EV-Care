@@ -107,6 +107,11 @@ O objetivo do EV Care é ajudar proprietários de veículos elétricos a respond
 - GitHub Codespaces para desenvolvimento online
 - GitHub para versionamento
 
+## Acesse o EV Care Beta
+
+- O aplicativo está diponível em:
+- https://rodrigomelo7080-beep-ev-care-app-6ajra2.streamlit.app/
+
 ## ▶️ Como executar o projeto
 
 Instale as dependências:
