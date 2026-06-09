@@ -438,6 +438,7 @@ pagina = st.sidebar.radio(
         "Viagens",
         "Custos e Economia",
         "Histórico",
+        "Planos",
         "Configurações"
     ]
 )
@@ -2070,6 +2071,97 @@ elif pagina == "Histórico":
                     )
 # VIAGENS
 
+# =============================================================================
+# PLANOS
+# =============================================================================
+
+elif pagina == "Planos":
+    st.header("Planos do EV Care")
+
+    st.write(
+        "O EV Care está em fase Beta e atualmente pode ser usado gratuitamente. "
+        "No futuro, o aplicativo poderá contar com recursos avançados no plano Plus."
+    )
+
+    st.divider()
+
+    col_free, col_plus = st.columns(2)
+
+    with col_free:
+        st.subheader("EV Care Free")
+        st.caption("Disponível agora")
+
+        st.markdown(
+            """
+            Ideal para quem quer começar a controlar seu veículo elétrico.
+
+            Inclui:
+
+            - Cadastro de 1 veículo
+            - Registro de recargas
+            - Atualização de quilometragem
+            - Dashboard básico
+            - Controle de manutenções
+            - Simulação de viagens
+            - Custos e economia
+            - Histórico básico
+            """
+        )
+
+        st.success("Plano atual: gratuito durante o Beta")
+
+    with col_plus:
+        st.subheader("EV Care Plus")
+        st.caption("Em breve")
+
+        st.markdown(
+            """
+            Pensado para usuários que desejam mais controle, relatórios e automação.
+
+            Recursos planejados:
+
+            - Veículos ilimitados
+            - Backup em nuvem
+            - Sincronização entre dispositivos
+            - Relatórios mensais
+            - Exportação em PDF ou Excel
+            - Alertas inteligentes de manutenção
+            - Gráficos avançados de consumo
+            - Comparações mensais de economia
+            - Histórico completo avançado
+            """
+        )
+
+        st.info("Recurso planejado para uma próxima fase")
+
+    st.divider()
+
+    st.subheader("Por que existirão planos pagos?")
+
+    st.write(
+        "A proposta do EV Care é manter uma versão gratuita útil para o usuário comum "
+        "e oferecer recursos avançados para quem deseja análises mais completas, "
+        "relatórios, backup em nuvem e automações."
+    )
+
+    st.warning(
+        "Durante a fase Beta, os recursos podem mudar conforme testes, feedbacks e evolução do produto."
+    )
+
+    st.divider()
+
+    st.subheader("Próxima fase planejada")
+
+    st.markdown(
+        """
+        A próxima grande evolução técnica será a implementação de:
+
+        - Login de usuários
+        - Banco de dados online
+        - Dados separados por conta
+        - Base para plano Free e Plus
+        """
+    )
 
 elif pagina == "Configurações":
     st.header("Configurações")
