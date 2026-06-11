@@ -18,7 +18,7 @@ from veiculos_db import (
     excluir_veiculo_online
 )
 
-from veiculo_online_adapter import converter_veiculo_online_para_veiculo_ev
+from veiculo_online_adapter import converter_veiculo_online
 from ev_care_base import (
     VeiculoEV,
     DADOS_VEICULOS,
@@ -405,6 +405,40 @@ def atualizar_veiculo_ativo_por_indice(indice):
         st.session_state.veiculo_ativo = garagem[indice]
         salvar_estado()
 
+def carregar_veiculo_online_ativo_para_app():
+    """
+    Busca o veículo ativo online no Supabase, converte para VeiculoEV
+    e define como veículo ativo do aplicativo.
+
+    Isso permite que Dashboard, Viagens, Custos e outras páginas
+    comecem a reconhecer o veículo salvo na nuvem.
+    """
+    if not st.session_state.get("auth_logado", False):
+        return False
+
+    registro_online, erro = obter_veiculo_ativo_online()
+
+    if erro:
+        st.session_state.erro_veiculo_online_ativo = erro
+        return False
+
+    if not registro_online:
+        st.session_state.erro_veiculo_online_ativo = None
+        return False
+
+    veiculo_convertido = converter_veiculo_online(registro_online)
+
+    if veiculo_convertido is None:
+        st.session_state.erro_veiculo_online_ativo = "Não foi possível converter o veículo online."
+        return False
+
+    garantir_plano_manutencao_expandido(veiculo_convertido)
+
+    st.session_state.veiculo_ativo = veiculo_convertido
+    st.session_state.veiculo_ativo_origem = "supabase"
+    st.session_state.erro_veiculo_online_ativo = None
+
+    return True
 
 # =============================================================================
 # SIDEBAR
@@ -418,31 +452,49 @@ usuario = usuario.strip() if usuario.strip() else "default"
 
 inicializar_estado(usuario)
 
+if st.session_state.get("auth_logado", False):
+    carregar_veiculo_online_ativo_para_app()
+
 garagem = obter_garagem()
-veiculo_ativo = obter_veiculo_ativo()
+
 
 st.sidebar.divider()
 
-if garagem:
-    nomes_veiculos = [formatar_nome_veiculo(v) for v in garagem]
+if st.session_state.get("auth_logado", False):
+    if veiculo_ativo and getattr(veiculo_ativo, "origem_dados", None) == "supabase":
+        st.sidebar.success(
+            f"Veículo online ativo: {veiculo_ativo.marca} {veiculo_ativo.modelo}"
+        )
+        st.sidebar.caption(f"KM atual: {veiculo_ativo.km_atual} km")
+    else:
+        st.sidebar.warning(
+            "Nenhum veículo online ativo. Acesse Minha Garagem para cadastrar ou ativar um veículo."
+        )
 
-    indice_padrao = 0
+    if st.session_state.get("erro_veiculo_online_ativo"):
+        st.sidebar.error(st.session_state.erro_veiculo_online_ativo)
 
-    if veiculo_ativo in garagem:
-        indice_padrao = garagem.index(veiculo_ativo)
-
-    indice_escolhido = st.sidebar.selectbox(
-        "Veículo ativo",
-        range(len(garagem)),
-        format_func=lambda i: nomes_veiculos[i],
-        index=indice_padrao
-    )
-
-    if garagem[indice_escolhido] != veiculo_ativo:
-        atualizar_veiculo_ativo_por_indice(indice_escolhido)
-        veiculo_ativo = obter_veiculo_ativo()
 else:
-    st.sidebar.warning("Nenhum veículo cadastrado.")
+    if garagem:
+        nomes_veiculos = [formatar_nome_veiculo(v) for v in garagem]
+
+        indice_padrao = 0
+
+        if veiculo_ativo in garagem:
+            indice_padrao = garagem.index(veiculo_ativo)
+
+        indice_escolhido = st.sidebar.selectbox(
+            "Veículo ativo",
+            range(len(garagem)),
+            format_func=lambda i: nomes_veiculos[i],
+            index=indice_padrao
+        )
+
+        if garagem[indice_escolhido] != veiculo_ativo:
+            atualizar_veiculo_ativo_por_indice(indice_escolhido)
+            veiculo_ativo = obter_veiculo_ativo()
+    else:
+        st.sidebar.warning("Nenhum veículo cadastrado.")
 
 st.sidebar.divider()
 
