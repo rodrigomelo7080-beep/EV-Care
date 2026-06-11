@@ -439,7 +439,8 @@ pagina = st.sidebar.radio(
         "Custos e Economia",
         "Histórico",
         "Planos",
-        "Configurações"
+        "Configurações",
+        "Feedback"
     ]
 )
 
@@ -2161,6 +2162,86 @@ elif pagina == "Planos":
         - Dados separados por conta
         - Base para plano Free e Plus
         """
+    )
+
+# =============================================================================
+# FEEDBACK
+# =============================================================================
+
+elif pagina == "Feedback":
+    st.header("Feedback do EV Care")
+
+    st.write(
+        "O EV Care está em fase Beta. Seu feedback ajuda a melhorar o aplicativo "
+        "e a definir quais recursos devem ser priorizados nas próximas versões."
+    )
+
+    st.divider()
+
+    st.subheader("O que você pode enviar?")
+
+    st.markdown(
+        """
+        - Sugestões de novas funcionalidades
+        - Problemas encontrados durante o uso
+        - Dificuldades em alguma tela
+        - Ideias para melhorar recargas, manutenções ou custos
+        - Interesse no futuro plano EV Care Plus
+        """
+    )
+
+    st.divider()
+
+    st.subheader("Interesse no EV Care Plus")
+
+    interesse_plus = st.multiselect(
+        "Quais recursos premium você considera mais úteis?",
+        [
+            "Veículos ilimitados",
+            "Backup em nuvem",
+            "Relatórios mensais",
+            "Exportação em PDF",
+            "Exportação em Excel",
+            "Alertas inteligentes de manutenção",
+            "Gráficos avançados de consumo",
+            "Comparação mensal de economia",
+            "Histórico avançado",
+            "Sincronização entre dispositivos"
+        ]
+    )
+
+    if interesse_plus:
+        st.success("Obrigado! Esses interesses ajudam a priorizar o EV Care Plus.")
+        st.write("Recursos selecionados:")
+        for item in interesse_plus:
+            st.write(f"- {item}")
+
+    st.divider()
+
+    st.subheader("Modelo de feedback")
+
+    st.info(
+        "Nesta versão Beta, o envio automático ainda será estruturado. "
+        "Por enquanto, use este modelo para coletar opiniões e relatos de teste."
+    )
+
+    st.markdown(
+        """
+        **Modelo sugerido:**
+
+        - Nome:
+        - Modelo do veículo:
+        - Página onde ocorreu o problema:
+        - O que você tentou fazer:
+        - O que aconteceu:
+        - O que você esperava:
+        - Sugestão de melhoria:
+        - Você teria interesse no EV Care Plus? Sim/Não
+        """
+    )
+
+    st.warning(
+        "Não envie senhas, documentos pessoais, dados bancários ou informações sensíveis nesta fase Beta."
     )
 
 elif pagina == "Configurações":
