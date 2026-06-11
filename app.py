@@ -18,6 +18,7 @@ from veiculos_db import (
     excluir_veiculo_online
 )
 
+from veiculo_online_adapter import converter_veiculo_online
 from ev_care_base import (
     VeiculoEV,
     DADOS_VEICULOS,
@@ -2614,6 +2615,65 @@ elif pagina == "Configurações":
         "Este teste verifica se o usuário logado consegue acessar a tabela "
         "`veiculos` no Supabase."
     )
+
+    st.subheader("Teste de conversão do veículo online")
+
+    st.write(
+        "Este teste busca o veículo ativo online no Supabase e converte esse registro "
+        "para um objeto VeiculoEV, permitindo que o restante do app use os métodos atuais."
+    )
+
+    if st.button("Testar conversão do veículo online"):
+        if not st.session_state.auth_logado:
+            st.warning("Faça login na página Conta antes de testar a conversão.")
+        else:
+            registro_ativo_online, erro_ativo_online = obter_veiculo_ativo_online()
+
+            if erro_ativo_online:
+                st.error("Erro ao buscar veículo ativo online.")
+                st.write(erro_ativo_online)
+            elif not registro_ativo_online:
+                st.warning(
+                    "Nenhum veículo ativo online encontrado. "
+                    "Vá em Minha Garagem e defina ou cadastre um veículo online."
+                )
+            else:
+                veiculo_convertido = converter_veiculo_online_para_veiculo_ev(
+                    registro_ativo_online
+                )
+
+                if veiculo_convertido is None:
+                    st.error("Não foi possível converter o veículo online.")
+                else:
+                    st.success("Veículo online convertido para VeiculoEV com sucesso.")
+
+                    col_conv1, col_conv2, col_conv3 = st.columns(3)
+
+                    with col_conv1:
+                        st.metric(
+                            "Veículo convertido",
+                            f"{veiculo_convertido.marca} {veiculo_convertido.modelo}"
+                        )
+
+                    with col_conv2:
+                        st.metric(
+                            "KM atual",
+                            f"{veiculo_convertido.km_atual} km"
+                        )
+
+                    with col_conv3:
+                        st.metric(
+                            "Autonomia estimada",
+                            f"{veiculo_convertido.calcular_autonomia():.0f} km"
+                        )
+
+                    st.write(f"**Origem dos dados:** {getattr(veiculo_convertido, 'origem_dados', 'local')}")
+                    st.write(f"**ID online:** {getattr(veiculo_convertido, 'id_online', 'Não informado')}")
+                    st.write(f"**Bateria:** {veiculo_convertido.info.get('Bateria', 'Não informada')}")
+                    st.write(f"**Consumo:** {veiculo_convertido.info.get('Consumo', 0)} km/kWh")
+                    st.write(f"**Serviços de manutenção no plano:** {len(veiculo_convertido.plano)}")
+
+    st.divider()
 
     if st.button("Testar veículos online"):
         if not st.session_state.auth_logado:
