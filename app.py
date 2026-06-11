@@ -8,7 +8,11 @@ from auth_helpers import (
     entrar_usuario,
     sair_usuario
 )
-from veiculos_db import listar_veiculos_usuario, contar_veiculos_usuario
+from veiculos_db import (
+    listar_veiculos_usuario,
+    contar_veiculos_usuario,
+    criar_veiculo_online
+)
 from ev_care_base import (
     VeiculoEV,
     DADOS_VEICULOS,
@@ -2395,6 +2399,80 @@ elif pagina == "Configurações":
                         )
                 else:
                     st.info("Nenhum veículo online cadastrado para este usuário ainda.")
+
+    st.subheader("Criar veículo online de teste")
+
+    st.write(
+        "Este formulário cria um veículo diretamente no Supabase para o usuário logado. "
+        "Na versão Free, o limite inicial será de 1 veículo por usuário."
+    )
+
+    with st.form("form_criar_veiculo_online_teste"):
+        marca_online = st.text_input("Marca do veículo", key="online_marca_teste")
+        modelo_online = st.text_input("Modelo do veículo", key="online_modelo_teste")
+
+        km_online = st.number_input(
+            "KM atual",
+            min_value=0,
+            step=100,
+            key="online_km_teste"
+        )
+
+        bateria_online = st.number_input(
+            "Capacidade da bateria em kWh",
+            min_value=0.1,
+            step=0.1,
+            value=40.0,
+            key="online_bateria_teste"
+        )
+
+        consumo_online = st.number_input(
+            "Consumo médio em km/kWh",
+            min_value=0.1,
+            step=0.1,
+            value=6.0,
+            key="online_consumo_teste"
+        )
+
+        criar_online = st.form_submit_button("Criar veículo online de teste")
+
+        if criar_online:
+            if not st.session_state.auth_logado:
+                st.warning("Faça login na página Conta antes de criar veículo online.")
+            elif not marca_online.strip() or not modelo_online.strip():
+                st.warning("Informe marca e modelo.")
+            else:
+                quantidade_atual, erro_quantidade = contar_veiculos_usuario()
+
+                if erro_quantidade:
+                    st.error("Erro ao verificar limite de veículos.")
+                    st.write(erro_quantidade)
+                elif st.session_state.auth_plano == "free" and quantidade_atual >= 1:
+                    st.warning(
+                        "O plano Free permite 1 veículo online. "
+                        "Veículos adicionais farão parte do EV Care Plus."
+                    )
+                else:
+                    ok, resposta = criar_veiculo_online(
+                        user_id=st.session_state.auth_user_id,
+                        marca=marca_online.strip().upper(),
+                        modelo=modelo_online.strip().upper(),
+                        km_atual=km_online,
+                        bateria_kwh=bateria_online,
+                        consumo_km_kwh=consumo_online,
+                        dados_tecnicos={
+                            "origem": "teste_configuracoes",
+                            "plano_usuario": st.session_state.auth_plano
+                        },
+                        veiculo_ativo=True
+                    )
+
+                    if ok:
+                        st.success("Veículo online criado com sucesso.")
+                        st.rerun()
+                    else:
+                        st.error("Não foi possível criar o veículo online.")
+                        st.write(resposta)    
 
     st.divider()
 
