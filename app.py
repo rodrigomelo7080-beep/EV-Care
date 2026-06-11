@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 from datetime import datetime
-from supabase_client import testar_conexao_supabase
+from supabase_client import testar_conexao_supabase, testar_cliente_autenticado
 from auth_helpers import (
     inicializar_estado_auth,
     criar_conta,
@@ -2351,7 +2351,18 @@ elif pagina == "Configurações":
             st.error("Não foi possível conectar ao Supabase.")
             st.write(resultado["mensagem"])
 
+    if st.button("Testar cliente Supabase autenticado"):
+        resultado_auth = testar_cliente_autenticado()
+
+        if resultado_auth["ok"]:
+            st.success(resultado_auth["mensagem"])
+        else:
+            st.error("Não foi possível criar cliente autenticado.")
+            st.write(resultado_auth["mensagem"])
+
     st.divider()
+
+    
 
 
     tab1, tab2, tab3 = st.tabs(
