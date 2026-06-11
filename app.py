@@ -450,7 +450,6 @@ pagina = st.sidebar.radio(
     [
         "Dashboard",
         "Minha Garagem",
-        "Garagem Online",
         "Quilometragem",
         "Recargas",
         "Manutenções",
@@ -799,7 +798,7 @@ if pagina == "Dashboard":
 # MINHA GARAGEM
 # =============================================================================
 
-elif pagina == "Minha Garagem":
+elif pagina == "Minha Garagem Local":
     st.header("Minha Garagem")
 
     if st.session_state.get("auth_logado", False):
@@ -1142,7 +1141,7 @@ elif pagina == "Minha Garagem":
 
             st.write("Esses dados não serão apagados ao editar o veículo.")
 
-            
+
 # =============================================================================
 # QUILOMETRAGEM
 # =============================================================================
@@ -2349,19 +2348,19 @@ elif pagina == "Conta":
                         st.error(mensagem)
 
 # =============================================================================
-# GARAGEM ONLINE
+# MINHA GARAGEM
 # =============================================================================
 
-elif pagina == "Garagem Online":
-    st.header("Garagem Online")
+elif pagina == "Minha Garagem":
+    st.header("Minha Garagem")
 
     st.info(
-        "Esta página usa o Supabase para salvar veículos na nuvem. "
-        "Ela faz parte da migração gradual do EV Care para login, banco online e planos Free/Plus."
+        "Esta garagem usa o Supabase para salvar seus veículos na nuvem. "
+        "Ela faz parte da evolução do EV Care para login, banco online e planos Free/Plus."
     )
 
     if not st.session_state.auth_logado:
-        st.warning("Faça login na página Conta para usar a Garagem Online.")
+        st.warning("Faça login na página Conta para usar a Minha Garagem.")
     else:
         st.write(f"Usuário logado: **{st.session_state.auth_email}**")
         st.write(f"Plano atual: **{st.session_state.auth_plano}**")
