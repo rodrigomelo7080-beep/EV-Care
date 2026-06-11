@@ -7,7 +7,11 @@ def criar_cliente_supabase():
     Cria o cliente Supabase usando secrets configurados no Streamlit Cloud.
     """
     supabase_url = str(st.secrets.get("SUPABASE_URL", "")).strip().rstrip("/")
-    supabase_key = str(st.secrets.get("SUPABASE_KEY", "")).strip()
+
+    # Corrige automaticamente caso a URL tenha sido copiada como endpoint REST
+    if supabase_url.endswith("/rest/v1"):
+        supabase_url = supabase_url.replace("/rest/v1", "")
+        supabase_key = str(st.secrets.get("SUPABASE_KEY", "")).strip()
 
     if not supabase_url or not supabase_key:
         return None, "Secrets SUPABASE_URL ou SUPABASE_KEY não encontrados."
