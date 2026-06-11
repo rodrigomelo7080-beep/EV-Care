@@ -802,15 +802,29 @@ if pagina == "Dashboard":
 elif pagina == "Minha Garagem":
     st.header("Minha Garagem")
 
+    if st.session_state.get("auth_logado", False):
+        st.info(
+            "Você está logado no EV Care. A gestão de veículos salvos na nuvem "
+            "já está disponível na página **Garagem Online**."
+        )
+
+        st.warning(
+            "Durante esta fase de migração, a página **Minha Garagem** ainda mantém "
+            "o modo local. Para veículos vinculados à sua conta e salvos no Supabase, "
+            "use a página **Garagem Online**."
+        )
+
+        st.divider()
+
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    [
-        "Veículos cadastrados",
-        "Adicionar pelo catálogo",
-        "Cadastro manual",
-        "Editar veículo",
-        "Excluir veículo"
-    ]
-)
+        [
+            "Veículos cadastrados",
+            "Adicionar pelo catálogo",
+            "Cadastro manual",
+            "Editar veículo",
+            "Excluir veículo"
+        ]
+    )
 
     # -------------------------------------------------------------------------
     # EXCLUIR VEÍCULO
@@ -1025,7 +1039,6 @@ elif pagina == "Minha Garagem":
                 "A quilometragem só pode ser aumentada para manter a consistência dos dados."
             )
 
-            # Tenta extrair a capacidade da bateria atual
             try:
                 bateria_atual = float(str(veiculo_edicao.info.get("Bateria", "0")).split()[0])
             except:
@@ -1079,26 +1092,21 @@ elif pagina == "Minha Garagem":
                             f"({veiculo_edicao.km_atual} km)."
                         )
                     else:
-                        # Atualiza marca e modelo
                         veiculo_edicao.marca = nova_marca.strip().upper()
                         veiculo_edicao.modelo = novo_modelo.strip().upper()
 
-                        # Atualiza KM usando o método existente para preservar histórico
                         if nova_km > veiculo_edicao.km_atual:
                             veiculo_edicao.atualizar_km(nova_km)
 
-                        # Preserva dados técnicos já existentes e atualiza bateria/consumo
                         veiculo_edicao.info["Bateria"] = f"{nova_bateria} kWh"
                         veiculo_edicao.info["Consumo"] = novo_consumo
 
-                        # Garante que campos essenciais continuem existindo
                         if "Revisao" not in veiculo_edicao.info:
                             veiculo_edicao.info["Revisao"] = REVISAO_PADRAO_GENERICA
 
                         if "FatorDegradacao" not in veiculo_edicao.info:
                             veiculo_edicao.info["FatorDegradacao"] = FATOR_DEGRADACAO_PADRAO
 
-                        # Atualiza referências internas do plano e fator
                         veiculo_edicao.plano = veiculo_edicao.info.get(
                             "Revisao",
                             REVISAO_PADRAO_GENERICA
@@ -1109,7 +1117,6 @@ elif pagina == "Minha Garagem":
                             FATOR_DEGRADACAO_PADRAO
                         )
 
-                        # Se o veículo editado for o ativo, mantém como ativo
                         if veiculo_ativo is veiculo_edicao:
                             st.session_state.veiculo_ativo = veiculo_edicao
 
@@ -1135,9 +1142,7 @@ elif pagina == "Minha Garagem":
 
             st.write("Esses dados não serão apagados ao editar o veículo.")
 
-
-
-
+            
 # =============================================================================
 # QUILOMETRAGEM
 # =============================================================================
