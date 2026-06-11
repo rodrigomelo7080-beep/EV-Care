@@ -12,6 +12,7 @@ from veiculos_db import (
     listar_veiculos_usuario,
     contar_veiculos_usuario,
     criar_veiculo_online,
+    atualizar_veiculo_online,
     definir_veiculo_ativo_online,
     obter_veiculo_ativo_online,
     excluir_veiculo_online
@@ -2450,6 +2451,71 @@ elif pagina == "Garagem Online":
                                 else:
                                     st.error("Não foi possível excluir o veículo online.")
                                     st.write(resposta)
+                        with st.expander("Editar veículo online"):
+                            with st.form(f"form_editar_online_{veiculo.get('id')}"):
+                                nova_marca_online = st.text_input(
+                                    "Marca",
+                                    value=veiculo.get("marca", ""),
+                                    key=f"editar_marca_online_{veiculo.get('id')}"
+                                )
+
+                                novo_modelo_online = st.text_input(
+                                    "Modelo",
+                                    value=veiculo.get("modelo", ""),
+                                    key=f"editar_modelo_online_{veiculo.get('id')}"
+                                )
+
+                                novo_km_online = st.number_input(
+                                    "KM atual",
+                                    min_value=0,
+                                    step=100,
+                                    value=int(veiculo.get("km_atual", 0)),
+                                    key=f"editar_km_online_{veiculo.get('id')}"
+                                )
+
+                                nova_bateria_online = st.number_input(
+                                    "Capacidade da bateria em kWh",
+                                    min_value=0.1,
+                                    step=0.1,
+                                    value=float(veiculo.get("bateria_kwh") or 40.0),
+                                    key=f"editar_bateria_online_{veiculo.get('id')}"
+                                )
+
+                                novo_consumo_online = st.number_input(
+                                    "Consumo médio em km/kWh",
+                                    min_value=0.1,
+                                    step=0.1,
+                                    value=float(veiculo.get("consumo_km_kwh") or 6.0),
+                                    key=f"editar_consumo_online_{veiculo.get('id')}"
+                                )
+
+                                salvar_edicao_online = st.form_submit_button(
+                                    "Salvar alterações online"
+                                )
+
+                                if salvar_edicao_online:
+                                    if not nova_marca_online.strip() or not novo_modelo_online.strip():
+                                        st.warning("Informe marca e modelo.")
+                                    else:
+                                        ok, resposta = atualizar_veiculo_online(
+                                            veiculo_id=veiculo.get("id"),
+                                            marca=nova_marca_online.strip().upper(),
+                                            modelo=novo_modelo_online.strip().upper(),
+                                            km_atual=novo_km_online,
+                                            bateria_kwh=nova_bateria_online,
+                                            consumo_km_kwh=novo_consumo_online,
+                                            dados_tecnicos={
+                                                "origem": "garagem_online_edicao",
+                                                "plano_usuario": st.session_state.auth_plano
+                                            }
+                                        )
+
+                                        if ok:
+                                            st.success("Veículo online atualizado com sucesso.")
+                                            st.rerun()
+                                        else:
+                                            st.error("Não foi possível atualizar o veículo online.")
+                                            st.write(resposta)
 
             st.subheader("Cadastrar veículo online")
 
