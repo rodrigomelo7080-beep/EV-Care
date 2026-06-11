@@ -8,6 +8,7 @@ from auth_helpers import (
     entrar_usuario,
     sair_usuario
 )
+from veiculos_db import listar_veiculos_usuario, contar_veiculos_usuario
 from ev_care_base import (
     VeiculoEV,
     DADOS_VEICULOS,
@@ -2359,6 +2360,41 @@ elif pagina == "Configurações":
         else:
             st.error("Não foi possível criar cliente autenticado.")
             st.write(resultado_auth["mensagem"])
+
+    st.subheader("Teste de veículos online")
+
+    st.write(
+        "Este teste verifica se o usuário logado consegue acessar a tabela "
+        "`veiculos` no Supabase."
+    )
+
+    if st.button("Testar veículos online"):
+        if not st.session_state.auth_logado:
+            st.warning("Faça login na página Conta antes de testar veículos online.")
+        else:
+            quantidade, erro_contagem = contar_veiculos_usuario()
+            veiculos_online, erro_lista = listar_veiculos_usuario()
+
+            if erro_contagem:
+                st.error("Erro ao contar veículos online.")
+                st.write(erro_contagem)
+            elif erro_lista:
+                st.error("Erro ao listar veículos online.")
+                st.write(erro_lista)
+            else:
+                st.success("Acesso à tabela veiculos funcionando.")
+                st.write(f"Veículos encontrados para este usuário: **{quantidade}**")
+
+                if veiculos_online:
+                    st.write("Veículos encontrados:")
+                    for veiculo in veiculos_online:
+                        st.write(
+                            f"- {veiculo.get('marca', 'Marca não informada')} "
+                            f"{veiculo.get('modelo', 'Modelo não informado')} "
+                            f"({veiculo.get('km_atual', 0)} km)"
+                        )
+                else:
+                    st.info("Nenhum veículo online cadastrado para este usuário ainda.")
 
     st.divider()
 
