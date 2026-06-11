@@ -13,7 +13,8 @@ from veiculos_db import (
     contar_veiculos_usuario,
     criar_veiculo_online,
     definir_veiculo_ativo_online,
-    obter_veiculo_ativo_online
+    obter_veiculo_ativo_online,
+    excluir_veiculo_online
 )
 
 from ev_care_base import (
@@ -2427,7 +2428,28 @@ elif pagina == "Garagem Online":
                                     st.error("Não foi possível definir veículo ativo.")
                                     st.write(resposta)
 
-            st.divider()
+                        st.divider()
+
+                        confirmacao_excluir = st.text_input(
+                            "Digite EXCLUIR para remover este veículo",
+                            key=f"confirmar_excluir_online_{veiculo.get('id')}"
+                        )
+
+                        if st.button(
+                            "Excluir veículo online",
+                            key=f"excluir_online_{veiculo.get('id')}"
+                        ):
+                            if confirmacao_excluir.strip().upper() != "EXCLUIR":
+                                st.warning("Digite EXCLUIR para confirmar a exclusão.")
+                            else:
+                                ok, resposta = excluir_veiculo_online(veiculo.get("id"))
+
+                                if ok:
+                                    st.success("Veículo online excluído com sucesso.")
+                                    st.rerun()
+                                else:
+                                    st.error("Não foi possível excluir o veículo online.")
+                                    st.write(resposta)
 
             st.subheader("Cadastrar veículo online")
 
