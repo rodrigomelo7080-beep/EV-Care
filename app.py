@@ -11,8 +11,11 @@ from auth_helpers import (
 from veiculos_db import (
     listar_veiculos_usuario,
     contar_veiculos_usuario,
-    criar_veiculo_online
+    criar_veiculo_online,
+    definir_veiculo_ativo_online,
+    obter_veiculo_ativo_online
 )
+
 from ev_care_base import (
     VeiculoEV,
     DADOS_VEICULOS,
@@ -445,6 +448,7 @@ pagina = st.sidebar.radio(
     [
         "Dashboard",
         "Minha Garagem",
+        "Garagem Online",
         "Quilometragem",
         "Recargas",
         "Manutenções",
@@ -2336,6 +2340,153 @@ elif pagina == "Conta":
                         st.success(mensagem)
                     else:
                         st.error(mensagem)
+
+# =============================================================================
+# GARAGEM ONLINE
+# =============================================================================
+
+elif pagina == "Garagem Online":
+    st.header("Garagem Online")
+
+    st.info(
+        "Esta página usa o Supabase para salvar veículos na nuvem. "
+        "Ela faz parte da migração gradual do EV Care para login, banco online e planos Free/Plus."
+    )
+
+    if not st.session_state.auth_logado:
+        st.warning("Faça login na página Conta para usar a Garagem Online.")
+    else:
+        st.write(f"Usuário logado: **{st.session_state.auth_email}**")
+        st.write(f"Plano atual: **{st.session_state.auth_plano}**")
+
+        st.divider()
+
+        quantidade, erro_quantidade = contar_veiculos_usuario()
+        veiculos_online, erro_lista = listar_veiculos_usuario()
+        veiculo_ativo_online, erro_ativo = obter_veiculo_ativo_online()
+
+        if erro_quantidade:
+            st.error("Erro ao contar veículos online.")
+            st.write(erro_quantidade)
+        elif erro_lista:
+            st.error("Erro ao listar veículos online.")
+            st.write(erro_lista)
+        else:
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.metric("Veículos online", quantidade)
+
+            with col2:
+                if veiculo_ativo_online:
+                    st.metric(
+                        "Veículo ativo online",
+                        f"{veiculo_ativo_online.get('marca', '')} {veiculo_ativo_online.get('modelo', '')}"
+                    )
+                else:
+                    st.metric("Veículo ativo online", "Nenhum")
+
+            st.divider()
+
+            st.subheader("Veículos cadastrados na nuvem")
+
+            if not veiculos_online:
+                st.info("Nenhum veículo online cadastrado ainda.")
+            else:
+                for veiculo in veiculos_online:
+                    with st.container(border=True):
+                        st.write(
+                            f"### {veiculo.get('marca', 'Marca não informada')} "
+                            f"{veiculo.get('modelo', 'Modelo não informado')}"
+                        )
+
+                        col_a, col_b, col_c = st.columns(3)
+
+                        with col_a:
+                            st.write(f"**KM atual:** {veiculo.get('km_atual', 0)} km")
+
+                        with col_b:
+                            st.write(f"**Bateria:** {veiculo.get('bateria_kwh', 0)} kWh")
+
+                        with col_c:
+                            st.write(f"**Consumo:** {veiculo.get('consumo_km_kwh', 0)} km/kWh")
+
+                        if veiculo.get("veiculo_ativo"):
+                            st.success("Veículo ativo")
+                        else:
+                            if st.button(
+                                "Definir como ativo",
+                                key=f"ativar_online_{veiculo.get('id')}"
+                            ):
+                                ok, resposta = definir_veiculo_ativo_online(veiculo.get("id"))
+
+                                if ok:
+                                    st.success("Veículo online definido como ativo.")
+                                    st.rerun()
+                                else:
+                                    st.error("Não foi possível definir veículo ativo.")
+                                    st.write(resposta)
+
+            st.divider()
+
+            st.subheader("Cadastrar veículo online")
+
+            if st.session_state.auth_plano == "free" and quantidade >= 1:
+                st.warning(
+                    "O plano Free permite 1 veículo online. "
+                    "Veículos adicionais farão parte do EV Care Plus."
+                )
+            else:
+                with st.form("form_garagem_online"):
+                    marca_online = st.text_input("Marca")
+                    modelo_online = st.text_input("Modelo")
+
+                    km_online = st.number_input(
+                        "KM atual",
+                        min_value=0,
+                        step=100
+                    )
+
+                    bateria_online = st.number_input(
+                        "Capacidade da bateria em kWh",
+                        min_value=0.1,
+                        step=0.1,
+                        value=40.0
+                    )
+
+                    consumo_online = st.number_input(
+                        "Consumo médio em km/kWh",
+                        min_value=0.1,
+                        step=0.1,
+                        value=6.0
+                    )
+
+                    cadastrar_online = st.form_submit_button("Cadastrar veículo online")
+
+                    if cadastrar_online:
+                        if not marca_online.strip() or not modelo_online.strip():
+                            st.warning("Informe marca e modelo.")
+                        else:
+                            ok, resposta = criar_veiculo_online(
+                                user_id=st.session_state.auth_user_id,
+                                marca=marca_online.strip().upper(),
+                                modelo=modelo_online.strip().upper(),
+                                km_atual=km_online,
+                                bateria_kwh=bateria_online,
+                                consumo_km_kwh=consumo_online,
+                                dados_tecnicos={
+                                    "origem": "garagem_online",
+                                    "plano_usuario": st.session_state.auth_plano
+                                },
+                                veiculo_ativo=(quantidade == 0)
+                            )
+
+                            if ok:
+                                st.success("Veículo online cadastrado com sucesso.")
+                                st.rerun()
+                            else:
+                                st.error("Não foi possível cadastrar veículo online.")
+                                st.write(resposta)
 
 elif pagina == "Configurações":
     st.header("Configurações")
