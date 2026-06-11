@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 from datetime import datetime
-
+from supabase_client import testar_conexao_supabase
 from ev_care_base import (
     VeiculoEV,
     DADOS_VEICULOS,
@@ -2246,6 +2246,25 @@ elif pagina == "Feedback":
 
 elif pagina == "Configurações":
     st.header("Configurações")
+
+    st.subheader("Conexão com Supabase")
+
+    st.write(
+        "Este teste verifica se o EV Care consegue ler os secrets do Streamlit Cloud "
+        "e criar o cliente Supabase."
+    )
+
+    if st.button("Testar conexão com Supabase"):
+        resultado = testar_conexao_supabase()
+
+        if resultado["ok"]:
+            st.success(resultado["mensagem"])
+        else:
+            st.error("Não foi possível conectar ao Supabase.")
+            st.write(resultado["mensagem"])
+
+    st.divider()
+
 
     tab1, tab2, tab3 = st.tabs(
         [
