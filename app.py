@@ -2,6 +2,12 @@ import streamlit as st
 import json
 from datetime import datetime
 from supabase_client import testar_conexao_supabase
+from auth_helpers import (
+    inicializar_estado_auth,
+    criar_conta,
+    entrar_usuario,
+    sair_usuario
+)
 from ev_care_base import (
     VeiculoEV,
     DADOS_VEICULOS,
@@ -20,6 +26,8 @@ st.set_page_config(
     page_icon="⚡",
     layout="wide"
 )
+
+inicializar_estado_auth()
 
 # =============================================================================
 # FUNÇÕES DE APOIO DO APP VISUAL
@@ -440,6 +448,7 @@ pagina = st.sidebar.radio(
         "Histórico",
         "Planos",
         "Configurações",
+        "Conta",
         "Feedback"
     ]
 )
@@ -472,6 +481,14 @@ if st.sidebar.button("Recarregar dados"):
         st.session_state.veiculo_ativo = st.session_state.garagem[0]
 
     st.rerun()
+
+    st.sidebar.divider()
+
+if st.session_state.auth_logado:
+    st.sidebar.success(f"Logado: {st.session_state.auth_email}")
+    st.sidebar.caption(f"Plano atual: {st.session_state.auth_plano}")
+else:
+    st.sidebar.info("Usuário não logado")
 
 
 # =============================================================================
@@ -2243,6 +2260,77 @@ elif pagina == "Feedback":
     st.warning(
         "Não envie senhas, documentos pessoais, dados bancários ou informações sensíveis nesta fase Beta."
     )
+
+    # =============================================================================
+# CONTA
+# =============================================================================
+
+elif pagina == "Conta":
+    st.header("Conta")
+
+    if st.session_state.auth_logado:
+        st.success("Usuário logado")
+
+        st.write(f"**E-mail:** {st.session_state.auth_email}")
+        st.write(f"**Nome:** {st.session_state.auth_nome}")
+        st.write(f"**Plano atual:** {st.session_state.auth_plano}")
+
+        st.info(
+            "Nesta fase, o login já está conectado ao Supabase. "
+            "Nas próximas etapas, garagem, recargas e manutenções serão migradas para o banco online."
+        )
+
+        if st.button("Sair da conta"):
+            sair_usuario()
+            st.success("Você saiu da conta.")
+            st.rerun()
+
+    else:
+        tab_login, tab_cadastro = st.tabs(["Entrar", "Criar conta"])
+
+        with tab_login:
+            st.subheader("Entrar")
+
+            email_login = st.text_input("E-mail", key="login_email")
+            senha_login = st.text_input("Senha", type="password", key="login_senha")
+
+            if st.button("Entrar"):
+                if not email_login or not senha_login:
+                    st.warning("Informe e-mail e senha.")
+                else:
+                    ok, mensagem = entrar_usuario(email_login, senha_login)
+
+                    if ok:
+                        st.success(mensagem)
+                        st.rerun()
+                    else:
+                        st.error(mensagem)
+
+        with tab_cadastro:
+            st.subheader("Criar conta")
+
+            nome_cadastro = st.text_input("Nome", key="cadastro_nome")
+            email_cadastro = st.text_input("E-mail", key="cadastro_email")
+            senha_cadastro = st.text_input("Senha", type="password", key="cadastro_senha")
+
+            st.caption("Use uma senha com pelo menos 6 caracteres.")
+
+            if st.button("Criar conta"):
+                if not email_cadastro or not senha_cadastro:
+                    st.warning("Informe e-mail e senha.")
+                elif len(senha_cadastro) < 6:
+                    st.warning("A senha deve ter pelo menos 6 caracteres.")
+                else:
+                    ok, mensagem = criar_conta(
+                        email_cadastro,
+                        senha_cadastro,
+                        nome_cadastro
+                    )
+
+                    if ok:
+                        st.success(mensagem)
+                    else:
+                        st.error(mensagem)
 
 elif pagina == "Configurações":
     st.header("Configurações")
