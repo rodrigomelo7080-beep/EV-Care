@@ -9,9 +9,6 @@ from ev_care_base import (
 def converter_veiculo_online_para_veiculo_ev(registro_online):
     """
     Converte um registro da tabela veiculos do Supabase em um objeto VeiculoEV.
-
-    Esta função cria uma ponte entre a nova garagem online e as telas antigas
-    do aplicativo, que ainda esperam trabalhar com objetos VeiculoEV.
     """
 
     if not registro_online:
@@ -22,17 +19,17 @@ def converter_veiculo_online_para_veiculo_ev(registro_online):
 
     try:
         km_atual = int(registro_online.get("km_atual") or 0)
-    except:
+    except Exception:
         km_atual = 0
 
     try:
         bateria_kwh = float(registro_online.get("bateria_kwh") or 0)
-    except:
+    except Exception:
         bateria_kwh = 0.0
 
     try:
         consumo_km_kwh = float(registro_online.get("consumo_km_kwh") or 6.0)
-    except:
+    except Exception:
         consumo_km_kwh = 6.0
 
     dados_tecnicos = registro_online.get("dados_tecnicos") or {}
@@ -61,10 +58,19 @@ def converter_veiculo_online_para_veiculo_ev(registro_online):
         info=info
     )
 
-    # Metadados online úteis para etapas futuras
     veiculo.id_online = registro_online.get("id")
     veiculo.user_id_online = registro_online.get("user_id")
     veiculo.origem_dados = "supabase"
     veiculo.veiculo_ativo_online = bool(registro_online.get("veiculo_ativo", False))
 
     return veiculo
+
+
+def converter_veiculo_online(registro_online):
+    """
+    Nome curto usado pelo app.py.
+
+    Esta função existe para compatibilidade com:
+    from veiculo_online_adapter import converter_veiculo_online
+    """
+    return converter_veiculo_online_para_veiculo_ev(registro_online)

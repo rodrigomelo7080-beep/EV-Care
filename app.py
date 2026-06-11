@@ -18,7 +18,7 @@ from veiculos_db import (
     excluir_veiculo_online
 )
 
-from veiculo_online_adapter import converter_veiculo_online
+from veiculo_online_adapter import converter_veiculo_online_para_veiculo_ev
 from ev_care_base import (
     VeiculoEV,
     DADOS_VEICULOS,
