@@ -2385,54 +2385,125 @@ elif pagina == "Custos e Economia":
 elif pagina == "Histórico":
     st.header("Histórico")
 
-    if not veiculo_ativo:
-        st.warning("Selecione ou cadastre um veículo antes de consultar o histórico.")
-    else:
-        st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
+    if not validar_contexto_online("Histórico"):
+        st.stop()
 
-        tab1, tab2, tab3 = st.tabs(
-            [
-                "Manutenções",
-                "Quilometragem",
-                "Recargas"
-            ]
+    veiculo_ativo = obter_veiculo_ativo()
+
+    st.success("Modo online: o histórico está usando dados do Supabase.")
+
+    st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
+
+    tab1, tab2, tab3 = st.tabs(
+        [
+            "Quilometragem",
+            "Recargas",
+            "Manutenções"
+        ]
+    )
+
+    # -------------------------------------------------------------------------
+    # HISTÓRICO ONLINE DE QUILOMETRAGEM
+    # -------------------------------------------------------------------------
+    with tab1:
+        st.subheader("Histórico online de quilometragem")
+
+        historico_online, erro_historico = listar_historico_km_online(
+            veiculo_ativo.id_online
         )
 
-        with tab1:
-            st.subheader("Histórico de manutenções")
+        if erro_historico:
+            st.error("Erro ao carregar histórico online de quilometragem.")
+            st.write(erro_historico)
+        elif not historico_online:
+            st.info("Ainda não há registros online de alteração de quilometragem.")
+        else:
+            for registro in historico_online:
+                km_anterior = int(registro.get("km_anterior", 0))
+                km_nova = int(registro.get("km_nova", 0))
+                diferenca = km_nova - km_anterior
 
-            if not veiculo_ativo.historico:
-                st.info("Nenhuma manutenção registrada.")
-            else:
-                for registro in reversed(veiculo_ativo.historico):
-                    st.write(f"- {registro}")
+                with st.container(border=True):
+                    st.write(f"**Data:** {registro.get('data_registro', 'Não informada')}")
+                    st.write(f"**KM anterior:** {km_anterior} km")
+                    st.write(f"**Nova KM:** {km_nova} km")
 
-        with tab2:
-            st.subheader("Histórico de quilometragem")
+                    if diferenca >= 0:
+                        st.write(f"**Diferença registrada:** {diferenca} km")
 
-            if not veiculo_ativo.historico_km:
-                st.info("Nenhuma alteração de quilometragem registrada.")
-            else:
-                for registro in reversed(veiculo_ativo.historico_km):
+    # -------------------------------------------------------------------------
+    # HISTÓRICO ONLINE DE RECARGAS
+    # -------------------------------------------------------------------------
+    with tab2:
+        st.subheader("Histórico online de recargas")
+
+        recargas_online, erro_recargas = listar_recargas_online(
+            veiculo_ativo.id_online
+        )
+
+        if erro_recargas:
+            st.error("Erro ao carregar histórico online de recargas.")
+            st.write(erro_recargas)
+        elif not recargas_online:
+            st.info("Nenhuma recarga online registrada.")
+        else:
+            for i, recarga in enumerate(recargas_online, 1):
+                with st.container(border=True):
+                    st.write(f"### Recarga {i}")
+
+                    col1, col2, col3, col4 = st.columns(4)
+
+                    with col1:
+                        st.write("**Data**")
+                        st.write(recarga.get("data_recarga", "Não informada"))
+
+                    with col2:
+                        st.write("**Local**")
+                        st.write(recarga.get("local", "Não informado"))
+
+                    with col3:
+                        st.write("**Energia**")
+                        st.write(f"{float(recarga.get('energia_kwh') or 0):.2f} kWh")
+
+                    with col4:
+                        st.write("**Custo**")
+                        st.write(f"R$ {float(recarga.get('custo_total') or 0):.2f}")
+
                     st.write(
-                        f"- {registro.get('data', 'Sem data')}: "
-                        f"{registro.get('km_anterior', 0)} km → "
-                        f"{registro.get('km_nova', 0)} km"
+                        f"**Bateria:** "
+                        f"{float(recarga.get('bateria_inicial') or 0):.1f}% → "
+                        f"{float(recarga.get('bateria_final') or 0):.1f}%"
                     )
 
-        with tab3:
-            st.subheader("Histórico de recargas")
+                    st.write(f"**Preço kWh:** R$ {float(recarga.get('preco_kwh') or 0):.2f}")
+                    st.write(f"**Tipo:** {recarga.get('tipo', 'Não informado')}")
+                    st.write(f"**KM no registro:** {recarga.get('km_atual', 0)} km")
 
-            if not veiculo_ativo.historico_recargas:
-                st.info("Nenhuma recarga registrada.")
-            else:
-                for i, recarga in enumerate(reversed(veiculo_ativo.historico_recargas), 1):
-                    st.write(
-                        f"{i}. {recarga.get('data', 'Sem data')} | "
-                        f"{recarga.get('local', 'Não informado')} | "
-                        f"{recarga.get('energia_kwh', 0):.2f} kWh | "
-                        f"R$ {recarga.get('custo_total', 0):.2f}"
-                    )
+                    if recarga.get("observacao"):
+                        st.write(f"**Observação:** {recarga.get('observacao')}")
+
+    # -------------------------------------------------------------------------
+    # HISTÓRICO ONLINE DE MANUTENÇÕES
+    # -------------------------------------------------------------------------
+    with tab3:
+        st.subheader("Histórico de manutenções")
+
+        st.info(
+            "O histórico online de manutenções será migrado na próxima etapa. "
+            "Por enquanto, garagem, quilometragem, recargas, dashboard e custos já estão online."
+        )
+
+        st.markdown(
+            """
+            Próxima etapa planejada:
+
+            - Criar tabela de serviços de manutenção no Supabase
+            - Criar tabela de manutenções realizadas
+            - Registrar manutenções por veículo online
+            - Exibir histórico online de manutenções
+            """
+        )
+        
 # VIAGENS
 
 # =============================================================================
