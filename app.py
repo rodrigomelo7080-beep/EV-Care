@@ -2373,6 +2373,7 @@ elif pagina == "Conta":
         st.write(f"**E-mail:** {st.session_state.auth_email}")
         st.write(f"**Nome:** {st.session_state.auth_nome}")
         st.write(f"**Plano atual:** {st.session_state.auth_plano}")
+        st.write(f"**Status da assinatura:** {st.session_state.get('auth_status_assinatura', 'inactive')}")
 
         st.info(
             "Nesta fase, o login já está conectado ao Supabase. "
