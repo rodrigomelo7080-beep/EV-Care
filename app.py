@@ -28,6 +28,11 @@ from recargas_db import (
     excluir_recarga_online,
     obter_resumo_recargas_online
 )
+from manutencoes_db import (
+    criar_plano_padrao_manutencao_online,
+    listar_servicos_manutencao_online,
+    obter_resumo_manutencoes_online
+)
 
 from veiculo_online_adapter import converter_veiculo_online
 from ev_care_base import (
@@ -2503,7 +2508,7 @@ elif pagina == "Histórico":
             - Exibir histórico online de manutenções
             """
         )
-        
+
 # VIAGENS
 
 # =============================================================================
@@ -3180,6 +3185,96 @@ elif pagina == "Configurações":
 
     st.divider()
 
+    st.subheader("Plano de manutenção online")
+
+    st.write(
+        "Este teste cria o plano padrão de manutenção EV no Supabase para o veículo online ativo, "
+        "caso ele ainda não exista."
+    )
+
+    if st.button("Inicializar plano de manutenção online"):
+        if not validar_contexto_online("Plano de manutenção online"):
+            st.stop()
+
+        veiculo_ativo = obter_veiculo_ativo()
+
+        ok, resposta = criar_plano_padrao_manutencao_online(
+            user_id=st.session_state.auth_user_id,
+            veiculo_id=veiculo_ativo.id_online,
+            km_atual=veiculo_ativo.km_atual
+        )
+
+        if ok:
+            st.success("Plano de manutenção online inicializado/verificado com sucesso.")
+            st.write(resposta)
+        else:
+            st.error("Não foi possível inicializar o plano de manutenção online.")
+            st.write(resposta)
+
+    if st.button("Listar serviços de manutenção online"):
+        if not validar_contexto_online("Serviços de manutenção online"):
+            st.stop()
+
+        veiculo_ativo = obter_veiculo_ativo()
+
+        servicos_online, erro_servicos = listar_servicos_manutencao_online(
+            veiculo_ativo.id_online
+        )
+
+        if erro_servicos:
+            st.error("Erro ao listar serviços de manutenção online.")
+            st.write(erro_servicos)
+        elif not servicos_online:
+            st.info("Nenhum serviço de manutenção online encontrado para este veículo.")
+        else:
+            st.success(f"Serviços encontrados: {len(servicos_online)}")
+
+            for servico in servicos_online:
+                with st.container(border=True):
+                    st.write(f"**Serviço:** {servico.get('nome', 'Não informado')}")
+                    st.write(f"**Categoria:** {servico.get('categoria', 'Não informada')}")
+                    st.write(f"**Intervalo KM:** {servico.get('intervalo_km', 0)} km")
+                    st.write(f"**Intervalo meses:** {servico.get('intervalo_meses', 0)}")
+                    st.write(f"**Criticidade:** {servico.get('criticidade', 'Não informada')}")
+                    st.write(f"**Última KM:** {servico.get('ultima_km', 0)} km")
+
+                    if servico.get("descricao"):
+                        st.caption(servico.get("descricao"))
+
+    if st.button("Testar resumo de manutenção online"):
+        if not validar_contexto_online("Resumo de manutenção online"):
+            st.stop()
+
+        veiculo_ativo = obter_veiculo_ativo()
+
+        resumo_manutencao, erro_resumo_manutencao = obter_resumo_manutencoes_online(
+            veiculo_id=veiculo_ativo.id_online,
+            km_atual=veiculo_ativo.km_atual
+        )
+
+        if erro_resumo_manutencao:
+            st.error("Erro ao calcular resumo de manutenção online.")
+            st.write(erro_resumo_manutencao)
+        elif not resumo_manutencao:
+            st.warning("Resumo de manutenção online indisponível.")
+        else:
+            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+
+            with col_m1:
+                st.metric("Total de serviços", resumo_manutencao["total_servicos"])
+
+            with col_m2:
+                st.metric("Vencidos", len(resumo_manutencao["vencidos"]))
+
+            with col_m3:
+                st.metric("Próximos", len(resumo_manutencao["proximos"]))
+
+            with col_m4:
+                st.metric("Em dia", len(resumo_manutencao["em_dia"]))
+
+            st.success("Resumo de manutenção online calculado com sucesso.")
+
+    st.divider()
     
 
 
