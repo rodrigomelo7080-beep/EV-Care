@@ -1,10 +1,20 @@
-cat > plano_helpers.py <<'PY'
 import streamlit as st
 
+
+# =============================================================================
+# CONSTANTES DOS PLANOS
+# =============================================================================
 
 PLANO_FREE = "free"
 PLANO_PLUS = "plus"
 
+STATUS_ACTIVE = "active"
+STATUS_INACTIVE = "inactive"
+
+
+# =============================================================================
+# RECURSOS PLUS
+# =============================================================================
 
 RECURSOS_PLUS = {
     "veiculos_ilimitados": "Veículos ilimitados",
@@ -18,9 +28,14 @@ RECURSOS_PLUS = {
 }
 
 
+# =============================================================================
+# LIMITES E PERMISSÕES POR PLANO
+# =============================================================================
+
 LIMITES_PLANO = {
     PLANO_FREE: {
         "limite_veiculos": 1,
+        "veiculos_ilimitados": False,
         "relatorios_mensais": False,
         "exportacao_pdf": False,
         "exportacao_excel": False,
@@ -31,6 +46,7 @@ LIMITES_PLANO = {
     },
     PLANO_PLUS: {
         "limite_veiculos": None,
+        "veiculos_ilimitados": True,
         "relatorios_mensais": True,
         "exportacao_pdf": True,
         "exportacao_excel": True,
@@ -42,12 +58,51 @@ LIMITES_PLANO = {
 }
 
 
+# =============================================================================
+# FUNÇÕES DE PLANO
+# =============================================================================
+
+def normalizar_plano(plano):
+    """
+    Normaliza o nome do plano para evitar erros de maiúsculas, espaços ou valores vazios.
+    """
+    if not plano:
+        return PLANO_FREE
+
+    plano_normalizado = str(plano).strip().lower()
+
+    if plano_normalizado == PLANO_PLUS:
+        return PLANO_PLUS
+
+    return PLANO_FREE
+
+
 def obter_plano_usuario():
     """
     Retorna o plano atual salvo na sessão.
     O padrão é free.
     """
-    return st.session_state.get("auth_plano", PLANO_FREE) or PLANO_FREE
+    plano = st.session_state.get("auth_plano", PLANO_FREE)
+    return normalizar_plano(plano)
+
+
+def obter_status_assinatura():
+    """
+    Retorna o status atual da assinatura salvo na sessão.
+    """
+    status = st.session_state.get("auth_status_assinatura", STATUS_INACTIVE)
+
+    if not status:
+        return STATUS_INACTIVE
+
+    return str(status).strip().lower()
+
+
+def usuario_eh_free():
+    """
+    Retorna True se o usuário estiver no plano Free.
+    """
+    return obter_plano_usuario() == PLANO_FREE
 
 
 def usuario_eh_plus():
@@ -55,6 +110,26 @@ def usuario_eh_plus():
     Retorna True se o usuário estiver no plano Plus.
     """
     return obter_plano_usuario() == PLANO_PLUS
+
+
+def usuario_plus_ativo():
+    """
+    Retorna True se o usuário estiver no plano Plus com assinatura ativa.
+    """
+    return (
+        obter_plano_usuario() == PLANO_PLUS
+        and obter_status_assinatura() == STATUS_ACTIVE
+    )
+
+
+def obter_nome_plano_formatado():
+    """
+    Retorna o nome comercial do plano atual.
+    """
+    if usuario_eh_plus():
+        return "EV Care Plus"
+
+    return "EV Care Free"
 
 
 def obter_limite_veiculos():
@@ -76,6 +151,11 @@ def pode_criar_veiculo(quantidade_atual):
 
     if limite is None:
         return True, None
+
+    try:
+        quantidade_atual = int(quantidade_atual)
+    except Exception:
+        quantidade_atual = 0
 
     if quantidade_atual < limite:
         return True, None
@@ -119,17 +199,44 @@ def exibir_resumo_plano():
     """
     Exibe um resumo simples do plano atual.
     """
-    plano = obter_plano_usuario()
-
-    if plano == PLANO_PLUS:
-        st.success("Plano atual: EV Care Plus")
-    else:
-        st.info("Plano atual: EV Care Free")
-
+    plano_formatado = obter_nome_plano_formatado()
+    status = obter_status_assinatura()
     limite = obter_limite_veiculos()
+
+    if usuario_eh_plus():
+        st.success(f"Plano atual: {plano_formatado}")
+    else:
+        st.info(f"Plano atual: {plano_formatado}")
+
+    st.write(f"Status da assinatura: {status}")
 
     if limite is None:
         st.write("Limite de veículos: ilimitado")
     else:
         st.write(f"Limite de veículos: {limite}")
-PY
+
+
+def obter_recursos_plus():
+    """
+    Retorna o dicionário de recursos Plus planejados.
+    """
+    return RECURSOS_PLUS
+
+
+def listar_recursos_bloqueados_para_usuario():
+    """
+    Retorna lista de recursos Plus que não estão disponíveis para o plano atual.
+    """
+    bloqueados = []
+
+    for chave_recurso, nome_recurso in RECURSOS_PLUS.items():
+        if not recurso_disponivel(chave_recurso):
+            bloqueados.append(
+                {
+                    "codigo": chave_recurso,
+                    "nome": nome_recurso,
+                    "mensagem": mensagem_recurso_plus(chave_recurso)
+                }
+            )
+
+    return bloqueados
