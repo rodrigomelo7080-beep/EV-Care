@@ -2264,84 +2264,118 @@ elif pagina == "Viagens":
 elif pagina == "Custos e Economia":
     st.header("Custos e Economia")
 
-    if not veiculo_ativo:
-        st.warning("Selecione ou cadastre um veículo antes de calcular custos.")
+    if not validar_contexto_online("Custos e Economia"):
+        st.stop()
+
+    veiculo_ativo = obter_veiculo_ativo()
+
+    st.success("Modo online: os custos estão usando dados do Supabase.")
+
+    st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
+
+    resumo, erro_resumo = obter_resumo_recargas_online(
+        veiculo_id=veiculo_ativo.id_online,
+        km_atual_veiculo=veiculo_ativo.km_atual
+    )
+
+    if erro_resumo:
+        st.error("Erro ao carregar resumo online de recargas.")
+        st.write(erro_resumo)
+        st.stop()
+
+    consumo_ev = float(veiculo_ativo.info.get("Consumo", 6.0))
+
+    estado_custos = st.selectbox(
+        "Estado para preço estimado do kWh",
+        ["CE", "SP", "RJ", "MG", "RS", "PR", "SC", "BA", "PE", "DF"],
+        key="custos_estado"
+    )
+
+    preco_kwh = buscar_preco_kwh(estado_custos)
+
+    preco_gasolina = st.number_input(
+        "Preço da gasolina em R$",
+        min_value=0.0,
+        step=0.01,
+        value=5.80,
+        key="custos_preco_gasolina"
+    )
+
+    consumo_gasolina = st.number_input(
+        "Consumo médio de carro a gasolina em km/l",
+        min_value=1.0,
+        step=0.1,
+        value=10.5,
+        key="custos_consumo_gasolina"
+    )
+
+    custo_ev_km_estimado = preco_kwh / consumo_ev if consumo_ev > 0 else 0
+    custo_gasolina_km = preco_gasolina / consumo_gasolina if consumo_gasolina > 0 else 0
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Custo/km elétrico estimado", f"R$ {custo_ev_km_estimado:.4f}")
+
+    with col2:
+        st.metric("Custo/km gasolina", f"R$ {custo_gasolina_km:.4f}")
+
+    with col3:
+        st.metric("Gasto total online", f"R$ {resumo['custo_total']:.2f}")
+
+    if custo_ev_km_estimado < custo_gasolina_km:
+        st.success("Pela estimativa, o veículo elétrico está mais econômico.")
     else:
-        st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
+        st.warning("Neste cenário, o veículo elétrico não está mais econômico pela estimativa.")
 
-        resumo = veiculo_ativo.obter_resumo_recargas()
-        consumo_ev = float(veiculo_ativo.info.get("Consumo", 6.0))
+    st.divider()
 
-        estado_custos = st.selectbox(
-            "Estado para preço estimado do kWh",
-            ["CE", "SP", "RJ", "MG", "RS", "PR", "SC", "BA", "PE", "DF"],
-            key="custos_estado"
-        )
+    st.subheader("Dados reais das recargas online")
 
-        preco_kwh = buscar_preco_kwh(estado_custos)
+    col_a, col_b, col_c = st.columns(3)
 
-        preco_gasolina = st.number_input(
-            "Preço da gasolina em R$",
-            min_value=0.0,
-            step=0.01,
-            value=5.80,
-            key="custos_preco_gasolina"
-        )
+    with col_a:
+        st.metric("Energia total", f"{resumo['energia_total']:.2f} kWh")
 
-        consumo_gasolina = st.number_input(
-            "Consumo médio de carro a gasolina em km/l",
-            min_value=1.0,
-            step=0.1,
-            value=10.5,
-            key="custos_consumo_gasolina"
-        )
+    with col_b:
+        st.metric("Preço médio kWh", f"R$ {resumo['preco_medio_kwh']:.2f}")
 
-        custo_ev_km = preco_kwh / consumo_ev if consumo_ev > 0 else 0
-        custo_gasolina_km = preco_gasolina / consumo_gasolina if consumo_gasolina > 0 else 0
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            st.metric("Custo/km elétrico estimado", f"R$ {custo_ev_km:.4f}")
-
-        with col2:
-            st.metric("Custo/km gasolina", f"R$ {custo_gasolina_km:.4f}")
-
-        with col3:
-            st.metric("Gasto total em recargas", f"R$ {resumo['custo_total']:.2f}")
-
-        if custo_ev_km < custo_gasolina_km:
-            st.success("Pela estimativa, o veículo elétrico está mais econômico.")
-        else:
-            st.warning("Neste cenário, o veículo elétrico não está mais econômico pela estimativa.")
-
-        st.divider()
-
-        st.subheader("Dados reais das recargas")
-
-        col_a, col_b, col_c = st.columns(3)
-
-        with col_a:
-            st.metric("Energia total", f"{resumo['energia_total']:.2f} kWh")
-
-        with col_b:
-            st.metric("Preço médio kWh", f"R$ {resumo['preco_medio_kwh']:.2f}")
-
-        with col_c:
-            if resumo["custo_real_km"] is not None:
-                st.metric("Custo real por km", f"R$ {resumo['custo_real_km']:.4f}")
-            else:
-                st.metric("Custo real por km", "Indisponível")
-
+    with col_c:
         if resumo["custo_real_km"] is not None:
-            economia_real = (custo_gasolina_km - resumo["custo_real_km"]) * resumo["km_rodados"]
-
-            if economia_real >= 0:
-                st.success(f"Economia real aproximada no período: R$ {economia_real:.2f}")
-            else:
-                st.warning(f"No período registrado, o elétrico ficou R$ {abs(economia_real):.2f} mais caro.")
+            st.metric("Custo real por km", f"R$ {resumo['custo_real_km']:.4f}")
         else:
-            st.info("Atualize recargas e quilometragem para calcular custo real por km.")
+            st.metric("Custo real por km", "Indisponível")
+
+    if resumo["consumo_real_km_kwh"] is not None:
+        st.success(
+            f"Consumo real aproximado: {resumo['consumo_real_km_kwh']:.2f} km/kWh"
+        )
+        st.write(f"KM considerados desde a primeira recarga: {resumo['km_rodados']} km")
+    else:
+        st.info(
+            "Para calcular consumo real, registre recargas e mantenha a quilometragem atualizada."
+        )
+
+    st.divider()
+
+    st.subheader("Economia real aproximada")
+
+    if resumo["custo_real_km"] is not None:
+        economia_real = (
+            custo_gasolina_km - resumo["custo_real_km"]
+        ) * resumo["km_rodados"]
+
+        if economia_real >= 0:
+            st.success(f"Economia real aproximada no período: R$ {economia_real:.2f}")
+        else:
+            st.warning(
+                f"No período registrado, o elétrico ficou R$ {abs(economia_real):.2f} mais caro."
+            )
+    else:
+        st.info(
+            "Ainda não há dados suficientes para calcular economia real. "
+            "Registre recargas e atualize a quilometragem para melhorar o cálculo."
+        )
 
 
 # =============================================================================
