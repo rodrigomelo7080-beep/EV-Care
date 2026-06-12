@@ -9,13 +9,21 @@ from ev_care_base import (
 def converter_veiculo_online_para_veiculo_ev(registro_online):
     """
     Converte um registro da tabela veiculos do Supabase em um objeto VeiculoEV.
+
+    Essa função permite que o veículo salvo no Supabase seja usado pelas
+    páginas antigas do app, que ainda dependem da classe VeiculoEV.
     """
 
     if not registro_online:
         return None
 
-    marca = str(registro_online.get("marca") or "Marca não informada").strip()
-    modelo = str(registro_online.get("modelo") or "Modelo não informado").strip()
+    marca = str(
+        registro_online.get("marca") or "Marca não informada"
+    ).strip()
+
+    modelo = str(
+        registro_online.get("modelo") or "Modelo não informado"
+    ).strip()
 
     try:
         km_atual = int(registro_online.get("km_atual") or 0)
@@ -51,17 +59,24 @@ def converter_veiculo_online_para_veiculo_ev(registro_online):
     info.setdefault("ManutencaoDetalhada", dict(MANUTENCOES_EV_DETALHADAS))
     info.setdefault("FatorDegradacao", FATOR_DEGRADACAO_PADRAO)
 
+    # IMPORTANTE:
+    # A classe VeiculoEV do seu projeto usa argumentos posicionais:
+    # VeiculoEV(marca, modelo, km_atual, info)
+    # Não use marca=, modelo=, km_atual=, info= aqui.
     veiculo = VeiculoEV(
-        marca=marca,
-        modelo=modelo,
-        km_atual=km_atual,
-        info=info
+        marca,
+        modelo,
+        km_atual,
+        info
     )
 
+    # Metadados online úteis para as próximas etapas da migração
     veiculo.id_online = registro_online.get("id")
     veiculo.user_id_online = registro_online.get("user_id")
     veiculo.origem_dados = "supabase"
-    veiculo.veiculo_ativo_online = bool(registro_online.get("veiculo_ativo", False))
+    veiculo.veiculo_ativo_online = bool(
+        registro_online.get("veiculo_ativo", False)
+    )
 
     return veiculo
 
@@ -70,7 +85,7 @@ def converter_veiculo_online(registro_online):
     """
     Nome curto usado pelo app.py.
 
-    Esta função existe para compatibilidade com:
+    Mantém compatibilidade com:
     from veiculo_online_adapter import converter_veiculo_online
     """
     return converter_veiculo_online_para_veiculo_ev(registro_online)
