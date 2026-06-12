@@ -1,7 +1,6 @@
 import streamlit as st
 import json
 from datetime import datetime
-from supabase_client import testar_conexao_supabase, testar_cliente_autenticado
 from auth_helpers import (
     inicializar_estado_auth,
     criar_conta,
@@ -42,10 +41,7 @@ from manutencoes_db import (
 from veiculo_online_adapter import converter_veiculo_online
 from ev_care_base import (
     VeiculoEV,
-    DADOS_VEICULOS,
-    REVISAO_PADRAO_GENERICA,
     MANUTENCOES_EV_DETALHADAS,
-    FATOR_DEGRADACAO_PADRAO,
     carregar_dados,
     salvar_dados,
     carregar_veiculo_ativo,
@@ -465,29 +461,12 @@ def validar_contexto_online(nome_pagina):
 
 def carregar_veiculo_online_ativo_para_app():
     """
-    Busca o veículo ativo online no Supabase, converte para VeiculoEV
-    e define como veículo ativo do aplicativo.
-
-    Isso permite que Dashboard, Viagens, Custos e outras páginas
-    comecem a reconhecer o veículo salvo na nuvem.
-    """
-    if not st.session_state.get("auth_logado", False):
-        return False
-
-    registro_online, erro = obter_veiculo_ativo_online()
-
-    if erro:
-        st.session_state.erro_veiculo_online_ativo = erro
-        return False
-
-    if not registro_online:
-        st.session_state.erro_veiculo_online_ativo = None
-        return False
-
-    veiculo_convertido = converter_veiculo_online(registro_online)
+    Busca o veículo)    Busca o veículo ativo online no Supabase, converte para VeiculoEV
 
     if veiculo_convertido is None:
         st.session_state.erro_veiculo_online_ativo = "Não foi possível converter o veículo online."
+        st.session_state.veiculo_ativo = None
+        st.session_state.veiculo_ativo_origem = None
         return False
 
     garantir_plano_manutencao_expandido(veiculo_convertido)
@@ -497,6 +476,42 @@ def carregar_veiculo_online_ativo_para_app():
     st.session_state.erro_veiculo_online_ativo = None
 
     return True
+    e define como veículo ativo do aplicativo.
+
+    Também limpa o veículo ativo caso a conta atual não tenha veículo ativo,
+    evitando exibir dados da conta anterior.
+    """
+    if not st.session_state.get("auth_logado", False):
+        st.session_state.veiculo_ativo = None
+        st.session_state.veiculo_ativo_origem = None
+        return False
+
+    registro_online, erro = obter_veiculo_ativo_online()
+
+    if erro:
+        st.session_state.erro_veiculo_online_ativo = erro
+        st.session_state.veiculo_ativo = None
+        st.session_state.veiculo_ativo_origem = None
+        return False
+
+    if not registro_online:
+        st.session_state.erro_veiculo_online_ativo = None
+        st.session_state.veiculo_ativo = None
+        st.session_state.veiculo_ativo_origem = None
+        return False
+
+    user_id_registro = registro_online.get("user_id")
+    user_id_sessao = st.session_state.get("auth_user_id")
+
+    if user_id_registro and user_id_sessao and user_id_registro != user_id_sessao:
+        st.session_state.erro_veiculo_online_ativo = (
+            "O veículo carregado não pertence ao usuário atual."
+        )
+        st.session_state.veiculo_ativo = None
+        st.session_state.veiculo_ativo_origem = None
+        return False
+
+
 
 # =============================================================================
 # SIDEBAR
@@ -505,55 +520,19 @@ def carregar_veiculo_online_ativo_para_app():
 st.sidebar.title("⚡ EV Care")
 st.sidebar.caption("Gestão de carros elétricos")
 
-usuario = st.sidebar.text_input("Usuário", value="default")
-usuario = usuario.strip() if usuario.strip() else "default"
+usuario = "default"
 
 inicializar_estado(usuario)
 
 if st.session_state.get("auth_logado", False):
     carregar_veiculo_online_ativo_para_app()
+else:
+    inicializar_estado(usuario)
 
 garagem = obter_garagem()
 veiculo_ativo = obter_veiculo_ativo()
 
 
-st.sidebar.divider()
-
-if st.session_state.get("auth_logado", False):
-    if veiculo_ativo and getattr(veiculo_ativo, "origem_dados", None) == "supabase":
-        st.sidebar.success(
-            f"Veículo online ativo: {veiculo_ativo.marca} {veiculo_ativo.modelo}"
-        )
-        st.sidebar.caption(f"KM atual: {veiculo_ativo.km_atual} km")
-    else:
-        st.sidebar.warning(
-            "Nenhum veículo online ativo. Acesse Minha Garagem para cadastrar ou ativar um veículo."
-        )
-
-    if st.session_state.get("erro_veiculo_online_ativo"):
-        st.sidebar.error(st.session_state.erro_veiculo_online_ativo)
-
-else:
-    if garagem:
-        nomes_veiculos = [formatar_nome_veiculo(v) for v in garagem]
-
-        indice_padrao = 0
-
-        if veiculo_ativo in garagem:
-            indice_padrao = garagem.index(veiculo_ativo)
-
-        indice_escolhido = st.sidebar.selectbox(
-            "Veículo ativo",
-            range(len(garagem)),
-            format_func=lambda i: nomes_veiculos[i],
-            index=indice_padrao
-        )
-
-        if garagem[indice_escolhido] != veiculo_ativo:
-            atualizar_veiculo_ativo_por_indice(indice_escolhido)
-            veiculo_ativo = obter_veiculo_ativo()
-    else:
-        st.sidebar.warning("Nenhum veículo cadastrado.")
 
 st.sidebar.divider()
 
@@ -595,16 +574,6 @@ with st.sidebar.expander("Guia rápido"):
         "Use este guia para completar a configuração inicial do EV Care."
     )
 
-if st.sidebar.button("Recarregar dados"):
-    st.session_state.garagem = carregar_dados(usuario)
-    st.session_state.veiculo_ativo = carregar_veiculo_ativo(usuario, st.session_state.garagem)
-
-    if st.session_state.veiculo_ativo is None and st.session_state.garagem:
-        st.session_state.veiculo_ativo = st.session_state.garagem[0]
-
-    st.rerun()
-
-    st.sidebar.divider()
 
 if st.session_state.auth_logado:
     st.sidebar.success(f"Logado: {st.session_state.auth_email}")
@@ -675,7 +644,7 @@ if pagina == "Dashboard":
 
         garantir_plano_manutencao_expandido(veiculo_ativo)
 
-        st.success("Modo online: o Dashboard está usando dados do Supabase.")
+        
         st.caption(
             "Garagem, quilometragem e recargas já estão sendo carregadas do banco online."
         )
@@ -995,353 +964,6 @@ if pagina == "Dashboard":
         )
 
 
-# =============================================================================
-# MINHA GARAGEM
-# =============================================================================
-
-elif pagina == "Minha Garagem Local":
-    st.header("Minha Garagem")
-
-    if st.session_state.get("auth_logado", False):
-        st.info(
-            "Você está logado no EV Care. A gestão de veículos salvos na nuvem "
-            "já está disponível na página **Garagem Online**."
-        )
-
-        st.warning(
-            "Durante esta fase de migração, a página **Minha Garagem** ainda mantém "
-            "o modo local. Para veículos vinculados à sua conta e salvos no Supabase, "
-            "use a página **Garagem Online**."
-        )
-
-        st.divider()
-
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        [
-            "Veículos cadastrados",
-            "Adicionar pelo catálogo",
-            "Cadastro manual",
-            "Editar veículo",
-            "Excluir veículo"
-        ]
-    )
-
-    # -------------------------------------------------------------------------
-    # EXCLUIR VEÍCULO
-    # -------------------------------------------------------------------------
-    with tab5:
-        st.subheader("Excluir veículo")
-
-        if not garagem:
-            st.info("Nenhum veículo cadastrado para excluir.")
-        else:
-            st.warning(
-                "Atenção: excluir um veículo apagará também suas recargas, "
-                "manutenções e histórico de quilometragem."
-            )
-
-            nomes_veiculos_exclusao = [
-                f"{v.marca} {v.modelo} - {v.km_atual} km"
-                for v in garagem
-            ]
-
-            indice_exclusao = st.selectbox(
-                "Selecione o veículo que deseja excluir",
-                range(len(garagem)),
-                format_func=lambda i: nomes_veiculos_exclusao[i],
-                key="indice_exclusao_veiculo"
-            )
-
-            veiculo_exclusao = garagem[indice_exclusao]
-
-            st.divider()
-
-            st.write("### Dados do veículo selecionado")
-            st.write(f"**Marca/modelo:** {veiculo_exclusao.marca} {veiculo_exclusao.modelo}")
-            st.write(f"**KM atual:** {veiculo_exclusao.km_atual} km")
-            st.write(f"**Bateria:** {veiculo_exclusao.info.get('Bateria', 'Não informada')}")
-            st.write(f"**Consumo:** {veiculo_exclusao.info.get('Consumo', 0)} km/kWh")
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.metric("Recargas", len(veiculo_exclusao.historico_recargas))
-
-            with col2:
-                st.metric("Manutenções", len(veiculo_exclusao.historico))
-
-            with col3:
-                st.metric("Registros de KM", len(veiculo_exclusao.historico_km))
-
-            st.divider()
-
-            st.error(
-                "Esta ação não pode ser desfeita dentro do aplicativo. "
-                "Se tiver dúvida, exporte um backup JSON antes de excluir."
-            )
-
-            confirmacao = st.text_input(
-                "Para confirmar, digite EXCLUIR",
-                key="confirmacao_excluir_veiculo"
-            )
-
-            if st.button("Excluir veículo selecionado", type="primary"):
-                if confirmacao.strip().upper() != "EXCLUIR":
-                    st.warning("Digite EXCLUIR para confirmar a exclusão.")
-                else:
-                    era_veiculo_ativo = veiculo_ativo is veiculo_exclusao
-
-                    garagem.pop(indice_exclusao)
-
-                    if era_veiculo_ativo:
-                        if garagem:
-                            st.session_state.veiculo_ativo = garagem[0]
-                        else:
-                            st.session_state.veiculo_ativo = None
-
-                    salvar_estado()
-
-                    st.success("Veículo excluído com sucesso.")
-                    st.rerun()
-
-    # -------------------------------------------------------------------------
-    # VEÍCULOS CADASTRADOS
-    # -------------------------------------------------------------------------
-    with tab1:
-        st.subheader("Veículos cadastrados")
-
-        if not garagem:
-            st.info("Nenhum veículo cadastrado ainda.")
-        else:
-            for i, v in enumerate(garagem):
-                with st.container(border=True):
-                    col1, col2, col3, col4 = st.columns(4)
-
-                    with col1:
-                        st.write("**Veículo**")
-                        st.write(f"{v.marca} {v.modelo}")
-
-                    with col2:
-                        st.write("**KM atual**")
-                        st.write(f"{v.km_atual} km")
-
-                    with col3:
-                        st.write("**Autonomia estimada**")
-                        st.write(f"{v.calcular_autonomia():.0f} km")
-
-                    with col4:
-                        if st.button("Selecionar", key=f"selecionar_{i}"):
-                            st.session_state.veiculo_ativo = v
-                            salvar_estado()
-                            st.success("Veículo ativo atualizado.")
-                            st.rerun()
-
-                    st.write(f"**Bateria:** {v.info.get('Bateria', 'Não informada')}")
-                    st.write(f"**Consumo:** {v.info.get('Consumo', 0)} km/kWh")
-                    st.write(f"**Recargas registradas:** {len(v.historico_recargas)}")
-                    st.write(f"**Manutenções registradas:** {len(v.historico)}")
-
-    # -------------------------------------------------------------------------
-    # ADICIONAR PELO CATÁLOGO
-    # -------------------------------------------------------------------------
-    with tab2:
-        st.subheader("Adicionar veículo do catálogo")
-
-        marcas = sorted(list(DADOS_VEICULOS.keys()))
-
-        marca = st.selectbox("Marca", marcas, key="catalogo_marca")
-        modelos = sorted(list(DADOS_VEICULOS[marca].keys()))
-        modelo = st.selectbox("Modelo", modelos, key="catalogo_modelo")
-        km = st.number_input("KM atual", min_value=0, step=100, key="km_catalogo")
-
-        dados_modelo = DADOS_VEICULOS[marca][modelo]
-
-        st.write("**Dados técnicos:**")
-        st.write(f"Bateria: {dados_modelo.get('Bateria')}")
-        st.write(f"Potência: {dados_modelo.get('Potencia')}")
-        st.write(f"Torque: {dados_modelo.get('Torque')}")
-        st.write(f"Consumo: {dados_modelo.get('Consumo')} km/kWh")
-
-        if st.button("Adicionar veículo do catálogo"):
-            novo = VeiculoEV(marca, modelo, km, dados_modelo)
-            garagem.append(novo)
-            st.session_state.veiculo_ativo = novo
-            salvar_estado()
-            st.success(f"{marca} {modelo} adicionado com sucesso.")
-            st.rerun()
-
-    # -------------------------------------------------------------------------
-    # CADASTRO MANUAL
-    # -------------------------------------------------------------------------
-    with tab3:
-        st.subheader("Cadastro manual")
-
-        with st.form("form_cadastro_manual"):
-            marca_manual = st.text_input("Marca")
-            modelo_manual = st.text_input("Modelo")
-            km_manual = st.number_input("KM atual", min_value=0, step=100)
-            bateria_manual = st.number_input("Capacidade da bateria em kWh", min_value=0.1, step=0.1)
-            consumo_manual = st.number_input("Consumo médio em km/kWh", min_value=0.1, step=0.1)
-
-            enviar_manual = st.form_submit_button("Cadastrar veículo manualmente")
-
-            if enviar_manual:
-                if not marca_manual.strip() or not modelo_manual.strip():
-                    st.error("Marca e modelo são obrigatórios.")
-                else:
-                    info_custom = {
-                        "Bateria": f"{bateria_manual} kWh",
-                        "Potencia": "Não informada",
-                        "Torque": "Não informado",
-                        "Consumo": consumo_manual,
-                        "Revisao": REVISAO_PADRAO_GENERICA,
-                        "FatorDegradacao": FATOR_DEGRADACAO_PADRAO
-                    }
-
-                    novo = VeiculoEV(
-                        marca_manual.strip(),
-                        modelo_manual.strip(),
-                        km_manual,
-                        info_custom
-                    )
-
-                    garagem.append(novo)
-                    st.session_state.veiculo_ativo = novo
-                    salvar_estado()
-                    st.success("Veículo cadastrado com sucesso.")
-                    st.rerun()
-
-    # -------------------------------------------------------------------------
-    # EDITAR VEÍCULO
-    # -------------------------------------------------------------------------
-    with tab4:
-        st.subheader("Editar veículo")
-
-        if not garagem:
-            st.info("Nenhum veículo cadastrado para editar.")
-        else:
-            nomes_veiculos_edicao = [
-                f"{v.marca} {v.modelo} - {v.km_atual} km"
-                for v in garagem
-            ]
-
-            indice_edicao = st.selectbox(
-                "Selecione o veículo que deseja editar",
-                range(len(garagem)),
-                format_func=lambda i: nomes_veiculos_edicao[i],
-                key="indice_edicao_veiculo"
-            )
-
-            veiculo_edicao = garagem[indice_edicao]
-
-            st.info(
-                "A edição preserva recargas, manutenções e histórico. "
-                "A quilometragem só pode ser aumentada para manter a consistência dos dados."
-            )
-
-            try:
-                bateria_atual = float(str(veiculo_edicao.info.get("Bateria", "0")).split()[0])
-            except:
-                bateria_atual = 0.1
-
-            try:
-                consumo_atual = float(veiculo_edicao.info.get("Consumo", 6.0))
-            except:
-                consumo_atual = 6.0
-
-            with st.form("form_editar_veiculo"):
-                nova_marca = st.text_input(
-                    "Marca",
-                    value=veiculo_edicao.marca
-                )
-
-                novo_modelo = st.text_input(
-                    "Modelo",
-                    value=veiculo_edicao.modelo
-                )
-
-                nova_km = st.number_input(
-                    "Quilometragem atual",
-                    min_value=0,
-                    step=100,
-                    value=int(veiculo_edicao.km_atual)
-                )
-
-                nova_bateria = st.number_input(
-                    "Capacidade da bateria em kWh",
-                    min_value=0.1,
-                    step=0.1,
-                    value=float(bateria_atual) if bateria_atual > 0 else 0.1
-                )
-
-                novo_consumo = st.number_input(
-                    "Consumo médio em km/kWh",
-                    min_value=0.1,
-                    step=0.1,
-                    value=float(consumo_atual) if consumo_atual > 0 else 6.0
-                )
-
-                confirmar_edicao = st.form_submit_button("Salvar alterações do veículo")
-
-                if confirmar_edicao:
-                    if not nova_marca.strip() or not novo_modelo.strip():
-                        st.error("Marca e modelo não podem ficar vazios.")
-                    elif nova_km < veiculo_edicao.km_atual:
-                        st.error(
-                            f"A nova KM não pode ser menor que a atual "
-                            f"({veiculo_edicao.km_atual} km)."
-                        )
-                    else:
-                        veiculo_edicao.marca = nova_marca.strip().upper()
-                        veiculo_edicao.modelo = novo_modelo.strip().upper()
-
-                        if nova_km > veiculo_edicao.km_atual:
-                            veiculo_edicao.atualizar_km(nova_km)
-
-                        veiculo_edicao.info["Bateria"] = f"{nova_bateria} kWh"
-                        veiculo_edicao.info["Consumo"] = novo_consumo
-
-                        if "Revisao" not in veiculo_edicao.info:
-                            veiculo_edicao.info["Revisao"] = REVISAO_PADRAO_GENERICA
-
-                        if "FatorDegradacao" not in veiculo_edicao.info:
-                            veiculo_edicao.info["FatorDegradacao"] = FATOR_DEGRADACAO_PADRAO
-
-                        veiculo_edicao.plano = veiculo_edicao.info.get(
-                            "Revisao",
-                            REVISAO_PADRAO_GENERICA
-                        )
-
-                        veiculo_edicao.fator_degradacao = veiculo_edicao.info.get(
-                            "FatorDegradacao",
-                            FATOR_DEGRADACAO_PADRAO
-                        )
-
-                        if veiculo_ativo is veiculo_edicao:
-                            st.session_state.veiculo_ativo = veiculo_edicao
-
-                        salvar_estado()
-
-                        st.success("Veículo editado com sucesso.")
-                        st.rerun()
-
-            st.divider()
-
-            st.subheader("Dados preservados")
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.metric("Recargas", len(veiculo_edicao.historico_recargas))
-
-            with col2:
-                st.metric("Manutenções", len(veiculo_edicao.historico))
-
-            with col3:
-                st.metric("Registros de KM", len(veiculo_edicao.historico_km))
-
-            st.write("Esses dados não serão apagados ao editar o veículo.")
-
 
 # =============================================================================
 # QUILOMETRAGEM
@@ -1355,7 +977,6 @@ elif pagina == "Quilometragem":
 
     veiculo_ativo = obter_veiculo_ativo()
 
-    st.success("Modo online: a quilometragem será salva no Supabase.")
 
     st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
 
@@ -1750,7 +1371,7 @@ elif pagina == "Recargas":
     # RESUMO ONLINE
     # -------------------------------------------------------------------------
     with tab3:
-        st.subheader("Resumo de recargas online")
+        st.subheader("Resumo de recargas")
 
         resumo, erro_resumo = obter_resumo_recargas_online(
             veiculo_id=veiculo_ativo.id_online,
@@ -1823,7 +1444,6 @@ elif pagina == "Manutenções":
 
     veiculo_ativo = obter_veiculo_ativo()
 
-    st.success("Modo online: as manutenções estão usando dados do Supabase.")
 
     st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
     st.write(f"KM atual: **{veiculo_ativo.km_atual} km**")
@@ -1882,7 +1502,7 @@ elif pagina == "Manutenções":
     # PAINEL DE MANUTENÇÃO ONLINE
     # -------------------------------------------------------------------------
     with tab1:
-        st.subheader("Painel de manutenção online")
+        st.subheader("Painel de manutenção")
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -1942,7 +1562,7 @@ elif pagina == "Manutenções":
     # REGISTRAR MANUTENÇÃO ONLINE
     # -------------------------------------------------------------------------
     with tab2:
-        st.subheader("Registrar manutenção realizada online")
+        st.subheader("Registrar manutenção realizada")
 
         servicos_ativos = resumo_manutencao["servicos"]
 
@@ -2247,9 +1867,8 @@ elif pagina == "Manutenções":
 
 
 # =============================================================================
-# CONFIGURAÇÕES
+# VIAGENS
 # =============================================================================
-# =============================================================================# =============================================================================
 
 elif pagina == "Viagens":
     st.header("Planejar Viagem")
@@ -2338,7 +1957,6 @@ elif pagina == "Custos e Economia":
 
     veiculo_ativo = obter_veiculo_ativo()
 
-    st.success("Modo online: os custos estão usando dados do Supabase.")
 
     st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
 
@@ -2459,7 +2077,6 @@ elif pagina == "Histórico":
 
     veiculo_ativo = obter_veiculo_ativo()
 
-    st.success("Modo online: o histórico está usando dados do Supabase.")
 
     st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
 
@@ -2504,7 +2121,7 @@ elif pagina == "Histórico":
     # HISTÓRICO ONLINE DE RECARGAS
     # -------------------------------------------------------------------------
     with tab2:
-        st.subheader("Histórico online de recargas")
+        st.subheader("Histórico de recargas")
 
         recargas_online, erro_recargas = listar_recargas_online(
             veiculo_ativo.id_online
@@ -2557,21 +2174,7 @@ elif pagina == "Histórico":
     with tab3:
         st.subheader("Histórico de manutenções")
 
-        st.info(
-            "O histórico online de manutenções será migrado na próxima etapa. "
-            "Por enquanto, garagem, quilometragem, recargas, dashboard e custos já estão online."
-        )
 
-        st.markdown(
-            """
-            Próxima etapa planejada:
-
-            - Criar tabela de serviços de manutenção no Supabase
-            - Criar tabela de manutenções realizadas
-            - Registrar manutenções por veículo online
-            - Exibir histórico online de manutenções
-            """
-        )
 
 # VIAGENS
 
@@ -2815,6 +2418,9 @@ elif pagina == "Conta":
 
                     if ok:
                         st.success(mensagem)
+
+                        if st.session_state.get("auth_logado", False):
+                            st.rerun()
                     else:
                         st.error(mensagem)
 
@@ -2824,11 +2430,6 @@ elif pagina == "Conta":
 
 elif pagina == "Minha Garagem":
     st.header("Minha Garagem")
-
-    st.info(
-        "Esta garagem usa o Supabase para salvar seus veículos na nuvem. "
-        "Ela faz parte da evolução do EV Care para login, banco online e planos Free/Plus."
-    )
 
     if not st.session_state.auth_logado:
         st.warning("Faça login na página Conta para usar a Minha Garagem.")

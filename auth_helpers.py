@@ -28,11 +28,30 @@ def inicializar_estado_auth():
     if "auth_refresh_token" not in st.session_state:
         st.session_state.auth_refresh_token = None
 
+def limpar_estado_dados_usuario():
+    """
+    Limpa dados carregados de usuário/veículo da sessão atual.
+
+    Isso evita que, ao trocar de conta, o app continue exibindo
+    dados da conta anterior.
+    """
+    chaves_para_limpar = [
+        "veiculo_ativo",
+        "veiculo_ativo_origem",
+        "erro_veiculo_online_ativo",
+        "garagem",
+        "usuario_atual"
+    ]
+
+    for chave in chaves_para_limpar:
+        if chave in st.session_state:
+            del st.session_state[chave]
 
 def salvar_usuario_na_sessao(user, session=None, nome=None):
     """
     Salva dados básicos do usuário autenticado no session_state.
     """
+    limpar_estado_dados_usuario()
 
     st.session_state.auth_logado = True
     st.session_state.auth_user_id = user.id
@@ -49,6 +68,8 @@ def sair_usuario():
     """
     Remove dados de autenticação da sessão local do Streamlit.
     """
+
+    limpar_estado_dados_usuario()
 
     st.session_state.auth_logado = False
     st.session_state.auth_user_id = None
