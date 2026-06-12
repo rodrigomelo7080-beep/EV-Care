@@ -1388,593 +1388,364 @@ elif pagina == "Quilometragem":
 elif pagina == "Recargas":
     st.header("Recargas")
 
-    if not veiculo_ativo:
-        st.warning("Cadastre ou selecione um veículo antes de registrar recargas.")
-    else:
-        usando_veiculo_online = (
-            st.session_state.get("auth_logado", False)
-            and getattr(veiculo_ativo, "origem_dados", None) == "supabase"
-            and getattr(veiculo_ativo, "id_online", None)
-        )
+    if not validar_contexto_online("Recargas"):
+        st.stop()
 
-        if usando_veiculo_online:
-            st.success("Modo online: as recargas serão salvas no Supabase.")
-        else:
-            st.info("Modo local: as recargas serão salvas no armazenamento local/JSON.")
+    veiculo_ativo = obter_veiculo_ativo()
 
-        st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
+    st.success("Modo online: as recargas serão salvas no Supabase.")
 
-        tab1, tab2, tab3 = st.tabs(
-            [
-                "Registrar recarga",
-                "Histórico / Editar / Excluir",
-                "Resumo"
-            ]
-        )
+    st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
 
-        # ---------------------------------------------------------------------
-        # REGISTRAR RECARGA
-        # ---------------------------------------------------------------------
-        with tab1:
-            st.subheader("Registrar nova recarga")
+    tab1, tab2, tab3 = st.tabs(
+        [
+            "Registrar recarga",
+            "Histórico / Editar / Excluir",
+            "Resumo"
+        ]
+    )
 
-            with st.form("form_registrar_recarga"):
-                bateria_inicial = st.number_input(
-                    "Bateria inicial (%)",
-                    min_value=0.0,
-                    max_value=100.0,
-                    step=1.0,
-                    key="nova_bateria_inicial"
-                )
+    # -------------------------------------------------------------------------
+    # REGISTRAR RECARGA ONLINE
+    # -------------------------------------------------------------------------
+    with tab1:
+        st.subheader("Registrar nova recarga")
 
-                bateria_final = st.number_input(
-                    "Bateria final (%)",
-                    min_value=0.0,
-                    max_value=100.0,
-                    step=1.0,
-                    key="nova_bateria_final"
-                )
+        with st.form("form_registrar_recarga_online"):
+            bateria_inicial = st.number_input(
+                "Bateria inicial (%)",
+                min_value=0.0,
+                max_value=100.0,
+                step=1.0,
+                key="online_bateria_inicial"
+            )
 
-                energia_kwh = st.number_input(
-                    "Energia carregada (kWh)",
-                    min_value=0.01,
-                    step=0.1,
-                    key="nova_energia_kwh"
-                )
+            bateria_final = st.number_input(
+                "Bateria final (%)",
+                min_value=0.0,
+                max_value=100.0,
+                step=1.0,
+                key="online_bateria_final"
+            )
 
-                preco_kwh = st.number_input(
-                    "Preço do kWh (R$)",
-                    min_value=0.0,
-                    step=0.01,
-                    value=0.63,
-                    key="novo_preco_kwh"
-                )
+            energia_kwh = st.number_input(
+                "Energia carregada (kWh)",
+                min_value=0.01,
+                step=0.1,
+                key="online_energia_kwh"
+            )
 
-                local = st.text_input(
-                    "Local da recarga",
-                    key="novo_local_recarga"
-                )
+            preco_kwh = st.number_input(
+                "Preço do kWh (R$)",
+                min_value=0.0,
+                step=0.01,
+                value=0.63,
+                key="online_preco_kwh"
+            )
 
-                tipo = st.selectbox(
-                    "Tipo de recarga",
-                    [
-                        "Residencial",
-                        "Pública lenta",
-                        "Pública rápida",
-                        "Gratuita",
-                        "Outro"
-                    ],
-                    key="novo_tipo_recarga"
-                )
+            local = st.text_input(
+                "Local da recarga",
+                key="online_local_recarga"
+            )
 
-                observacao = st.text_area(
-                    "Observação",
-                    key="nova_observacao_recarga"
-                )
+            tipo = st.selectbox(
+                "Tipo de recarga",
+                [
+                    "Residencial",
+                    "Pública lenta",
+                    "Pública rápida",
+                    "Gratuita",
+                    "Outro"
+                ],
+                key="online_tipo_recarga"
+            )
 
-                salvar_recarga = st.form_submit_button("Registrar recarga")
+            observacao = st.text_area(
+                "Observação",
+                key="online_observacao_recarga"
+            )
 
-                if salvar_recarga:
-                    if bateria_final < bateria_inicial:
-                        st.error("A bateria final não pode ser menor que a bateria inicial.")
-                    elif energia_kwh <= 0:
-                        st.error("Informe uma energia carregada maior que zero.")
+            salvar_recarga = st.form_submit_button("Registrar recarga online")
+
+            if salvar_recarga:
+                if bateria_final < bateria_inicial:
+                    st.error("A bateria final não pode ser menor que a bateria inicial.")
+                elif energia_kwh <= 0:
+                    st.error("Informe uma energia carregada maior que zero.")
+                else:
+                    ok, resposta = registrar_recarga_online(
+                        user_id=st.session_state.auth_user_id,
+                        veiculo_id=veiculo_ativo.id_online,
+                        km_atual=veiculo_ativo.km_atual,
+                        bateria_inicial=bateria_inicial,
+                        bateria_final=bateria_final,
+                        energia_kwh=energia_kwh,
+                        preco_kwh=preco_kwh,
+                        local=local,
+                        tipo=tipo,
+                        observacao=observacao
+                    )
+
+                    if ok:
+                        st.success(
+                            f"Recarga online registrada. "
+                            f"Custo total: R$ {energia_kwh * preco_kwh:.2f}"
+                        )
+                        st.rerun()
                     else:
-                        if usando_veiculo_online:
-                            ok, resposta = registrar_recarga_online(
-                                user_id=st.session_state.auth_user_id,
-                                veiculo_id=veiculo_ativo.id_online,
-                                km_atual=veiculo_ativo.km_atual,
-                                bateria_inicial=bateria_inicial,
-                                bateria_final=bateria_final,
-                                energia_kwh=energia_kwh,
-                                preco_kwh=preco_kwh,
-                                local=local,
-                                tipo=tipo,
-                                observacao=observacao
-                            )
+                        st.error("Não foi possível registrar a recarga online.")
+                        st.write(resposta)
 
-                            if ok:
-                                st.success(
-                                    f"Recarga online registrada. "
-                                    f"Custo total: R$ {energia_kwh * preco_kwh:.2f}"
-                                )
-                                st.rerun()
-                            else:
-                                st.error("Não foi possível registrar a recarga online.")
-                                st.write(resposta)
+    # -------------------------------------------------------------------------
+    # HISTÓRICO, EDITAR E EXCLUIR ONLINE
+    # -------------------------------------------------------------------------
+    with tab2:
+        st.subheader("Histórico de recargas online")
 
-                        else:
-                            if veiculo_ativo.registrar_recarga(
-                                bateria_inicial,
-                                bateria_final,
-                                energia_kwh,
-                                preco_kwh,
-                                local,
-                                tipo
-                            ):
-                                salvar_estado()
-                                st.success(
-                                    f"Recarga registrada. "
-                                    f"Custo total: R$ {energia_kwh * preco_kwh:.2f}"
-                                )
-                                st.rerun()
-                            else:
-                                st.error("Não foi possível registrar a recarga. Verifique os dados informados.")
+        recargas_online, erro_recargas = listar_recargas_online(
+            veiculo_ativo.id_online
+        )
 
-        # ---------------------------------------------------------------------
-        # HISTÓRICO, EDITAR E EXCLUIR
-        # ---------------------------------------------------------------------
-        with tab2:
-            st.subheader("Histórico de recargas")
-
-            if usando_veiculo_online:
-                recargas_online, erro_recargas = listar_recargas_online(
-                    veiculo_ativo.id_online
+        if erro_recargas:
+            st.error("Erro ao carregar recargas online.")
+            st.write(erro_recargas)
+        elif not recargas_online:
+            st.info("Nenhuma recarga online registrada.")
+        else:
+            for i, r in enumerate(recargas_online, 1):
+                titulo = (
+                    f"Recarga {i} - "
+                    f"{r.get('data_recarga', 'Data não informada')} - "
+                    f"{r.get('local', 'Local não informado')}"
                 )
 
-                if erro_recargas:
-                    st.error("Erro ao carregar recargas online.")
-                    st.write(erro_recargas)
-                elif not recargas_online:
-                    st.info("Nenhuma recarga online registrada.")
-                else:
-                    for i, r in enumerate(recargas_online, 1):
-                        titulo = (
-                            f"Recarga {i} - "
-                            f"{r.get('data_recarga', 'Data não informada')} - "
-                            f"{r.get('local', 'Local não informado')}"
-                        )
-
-                        with st.expander(titulo):
-                            col1, col2, col3, col4 = st.columns(4)
-
-                            with col1:
-                                st.write("**Data**")
-                                st.write(r.get("data_recarga", "Não informada"))
-
-                            with col2:
-                                st.write("**Bateria**")
-                                st.write(
-                                    f"{float(r.get('bateria_inicial') or 0):.1f}% → "
-                                    f"{float(r.get('bateria_final') or 0):.1f}%"
-                                )
-
-                            with col3:
-                                st.write("**Energia**")
-                                st.write(f"{float(r.get('energia_kwh') or 0):.2f} kWh")
-
-                            with col4:
-                                st.write("**Custo**")
-                                st.write(f"R$ {float(r.get('custo_total') or 0):.2f}")
-
-                            st.write(f"**Preço do kWh:** R$ {float(r.get('preco_kwh') or 0):.2f}")
-                            st.write(f"**Local:** {r.get('local', 'Não informado')}")
-                            st.write(f"**Tipo:** {r.get('tipo', 'Não informado')}")
-                            st.write(f"**KM no momento da recarga:** {r.get('km_atual', 0)} km")
-
-                            if r.get("observacao"):
-                                st.write(f"**Observação:** {r.get('observacao')}")
-
-                            st.divider()
-
-                            # -------------------------------------------------
-                            # EDITAR RECARGA ONLINE
-                            # -------------------------------------------------
-                            st.write("### Editar esta recarga")
-
-                            with st.form(f"form_editar_recarga_online_{r.get('id')}"):
-                                nova_bateria_inicial = st.number_input(
-                                    "Bateria inicial (%)",
-                                    min_value=0.0,
-                                    max_value=100.0,
-                                    step=1.0,
-                                    value=float(r.get("bateria_inicial") or 0),
-                                    key=f"editar_online_bateria_inicial_{r.get('id')}"
-                                )
-
-                                nova_bateria_final = st.number_input(
-                                    "Bateria final (%)",
-                                    min_value=0.0,
-                                    max_value=100.0,
-                                    step=1.0,
-                                    value=float(r.get("bateria_final") or 0),
-                                    key=f"editar_online_bateria_final_{r.get('id')}"
-                                )
-
-                                nova_energia_kwh = st.number_input(
-                                    "Energia carregada (kWh)",
-                                    min_value=0.01,
-                                    step=0.1,
-                                    value=float(r.get("energia_kwh") or 0.01),
-                                    key=f"editar_online_energia_{r.get('id')}"
-                                )
-
-                                novo_preco_kwh = st.number_input(
-                                    "Preço do kWh (R$)",
-                                    min_value=0.0,
-                                    step=0.01,
-                                    value=float(r.get("preco_kwh") or 0),
-                                    key=f"editar_online_preco_{r.get('id')}"
-                                )
-
-                                novo_local = st.text_input(
-                                    "Local da recarga",
-                                    value=r.get("local", ""),
-                                    key=f"editar_online_local_{r.get('id')}"
-                                )
-
-                                tipos_recarga = [
-                                    "Residencial",
-                                    "Pública lenta",
-                                    "Pública rápida",
-                                    "Gratuita",
-                                    "Outro"
-                                ]
-
-                                tipo_atual = r.get("tipo", "Outro")
-
-                                if tipo_atual in tipos_recarga:
-                                    indice_tipo = tipos_recarga.index(tipo_atual)
-                                else:
-                                    indice_tipo = 4
-
-                                novo_tipo = st.selectbox(
-                                    "Tipo de recarga",
-                                    tipos_recarga,
-                                    index=indice_tipo,
-                                    key=f"editar_online_tipo_{r.get('id')}"
-                                )
-
-                                nova_observacao = st.text_area(
-                                    "Observação",
-                                    value=r.get("observacao", ""),
-                                    key=f"editar_online_observacao_{r.get('id')}"
-                                )
-
-                                novo_custo_total = nova_energia_kwh * novo_preco_kwh
-
-                                st.info(f"Custo total recalculado: R$ {novo_custo_total:.2f}")
-
-                                confirmar_edicao = st.form_submit_button(
-                                    "Salvar alterações desta recarga"
-                                )
-
-                                if confirmar_edicao:
-                                    if nova_bateria_final < nova_bateria_inicial:
-                                        st.error("A bateria final não pode ser menor que a inicial.")
-                                    else:
-                                        ok, resposta = editar_recarga_online(
-                                            recarga_id=r.get("id"),
-                                            bateria_inicial=nova_bateria_inicial,
-                                            bateria_final=nova_bateria_final,
-                                            energia_kwh=nova_energia_kwh,
-                                            preco_kwh=novo_preco_kwh,
-                                            local=novo_local,
-                                            tipo=novo_tipo,
-                                            observacao=nova_observacao
-                                        )
-
-                                        if ok:
-                                            st.success("Recarga online editada com sucesso.")
-                                            st.rerun()
-                                        else:
-                                            st.error("Não foi possível editar a recarga online.")
-                                            st.write(resposta)
-
-                            st.divider()
-
-                            # -------------------------------------------------
-                            # EXCLUIR RECARGA ONLINE
-                            # -------------------------------------------------
-                            st.write("### Excluir esta recarga")
-
-                            confirmar_exclusao = st.checkbox(
-                                "Confirmo que desejo excluir esta recarga",
-                                key=f"confirmar_excluir_online_{r.get('id')}"
-                            )
-
-                            if st.button(
-                                "Excluir recarga online",
-                                key=f"botao_excluir_recarga_online_{r.get('id')}"
-                            ):
-                                if confirmar_exclusao:
-                                    ok, resposta = excluir_recarga_online(r.get("id"))
-
-                                    if ok:
-                                        st.success("Recarga online excluída com sucesso.")
-                                        st.rerun()
-                                    else:
-                                        st.error("Não foi possível excluir a recarga online.")
-                                        st.write(resposta)
-                                else:
-                                    st.warning("Marque a confirmação antes de excluir.")
-
-            else:
-                if not veiculo_ativo.historico_recargas:
-                    st.info("Nenhuma recarga registrada.")
-                else:
-                    for i, r in enumerate(veiculo_ativo.historico_recargas):
-                        titulo = (
-                            f"Recarga {i + 1} - "
-                            f"{r.get('data', 'Data não informada')} - "
-                            f"{r.get('local', 'Local não informado')}"
-                        )
-
-                        with st.expander(titulo):
-                            col1, col2, col3, col4 = st.columns(4)
-
-                            with col1:
-                                st.write("**Data**")
-                                st.write(r.get("data", "Não informada"))
-
-                                if r.get("data_edicao"):
-                                    st.caption(f"Editada em: {r.get('data_edicao')}")
-
-                            with col2:
-                                st.write("**Bateria**")
-                                st.write(
-                                    f"{r.get('bateria_inicial', 0):.1f}% → "
-                                    f"{r.get('bateria_final', 0):.1f}%"
-                                )
-
-                            with col3:
-                                st.write("**Energia**")
-                                st.write(f"{r.get('energia_kwh', 0):.2f} kWh")
-
-                            with col4:
-                                st.write("**Custo**")
-                                st.write(f"R$ {r.get('custo_total', 0):.2f}")
-
-                            st.write(f"**Preço do kWh:** R$ {r.get('preco_kwh', 0):.2f}")
-                            st.write(f"**Local:** {r.get('local', 'Não informado')}")
-                            st.write(f"**Tipo:** {r.get('tipo', 'Não informado')}")
-                            st.write(f"**KM no momento da recarga:** {r.get('km_atual', 0)} km")
-
-                            st.divider()
-
-                            st.write("### Editar esta recarga")
-
-                            with st.form(f"form_editar_recarga_{i}"):
-                                nova_bateria_inicial = st.number_input(
-                                    "Bateria inicial (%)",
-                                    min_value=0.0,
-                                    max_value=100.0,
-                                    step=1.0,
-                                    value=float(r.get("bateria_inicial", 0)),
-                                    key=f"editar_bateria_inicial_{i}"
-                                )
-
-                                nova_bateria_final = st.number_input(
-                                    "Bateria final (%)",
-                                    min_value=0.0,
-                                    max_value=100.0,
-                                    step=1.0,
-                                    value=float(r.get("bateria_final", 0)),
-                                    key=f"editar_bateria_final_{i}"
-                                )
-
-                                nova_energia_kwh = st.number_input(
-                                    "Energia carregada (kWh)",
-                                    min_value=0.01,
-                                    step=0.1,
-                                    value=float(r.get("energia_kwh", 0.01)),
-                                    key=f"editar_energia_{i}"
-                                )
-
-                                novo_preco_kwh = st.number_input(
-                                    "Preço do kWh (R$)",
-                                    min_value=0.0,
-                                    step=0.01,
-                                    value=float(r.get("preco_kwh", 0)),
-                                    key=f"editar_preco_{i}"
-                                )
-
-                                novo_local = st.text_input(
-                                    "Local da recarga",
-                                    value=r.get("local", "Não informado"),
-                                    key=f"editar_local_{i}"
-                                )
-
-                                tipos_recarga = [
-                                    "Residencial",
-                                    "Pública lenta",
-                                    "Pública rápida",
-                                    "Gratuita",
-                                    "Outro"
-                                ]
-
-                                tipo_atual = r.get("tipo", "Outro")
-
-                                if tipo_atual in tipos_recarga:
-                                    indice_tipo = tipos_recarga.index(tipo_atual)
-                                else:
-                                    indice_tipo = 4
-
-                                novo_tipo = st.selectbox(
-                                    "Tipo de recarga",
-                                    tipos_recarga,
-                                    index=indice_tipo,
-                                    key=f"editar_tipo_{i}"
-                                )
-
-                                novo_custo_total = nova_energia_kwh * novo_preco_kwh
-
-                                st.info(f"Custo total recalculado: R$ {novo_custo_total:.2f}")
-
-                                confirmar_edicao = st.form_submit_button(
-                                    "Salvar alterações desta recarga"
-                                )
-
-                                if confirmar_edicao:
-                                    if veiculo_ativo.editar_recarga(
-                                        i,
-                                        nova_bateria_inicial,
-                                        nova_bateria_final,
-                                        nova_energia_kwh,
-                                        novo_preco_kwh,
-                                        novo_local,
-                                        novo_tipo
-                                    ):
-                                        salvar_estado()
-                                        st.success("Recarga editada com sucesso.")
-                                        st.rerun()
-                                    else:
-                                        st.error("Não foi possível editar a recarga. Verifique os dados.")
-
-                            st.divider()
-
-                            st.write("### Excluir esta recarga")
-
-                            confirmar_exclusao = st.checkbox(
-                                "Confirmo que desejo excluir esta recarga",
-                                key=f"confirmar_excluir_{i}"
-                            )
-
-                            if st.button("Excluir recarga", key=f"botao_excluir_recarga_{i}"):
-                                if confirmar_exclusao:
-                                    if veiculo_ativo.excluir_recarga(i):
-                                        salvar_estado()
-                                        st.success("Recarga excluída com sucesso.")
-                                        st.rerun()
-                                    else:
-                                        st.error("Não foi possível excluir a recarga.")
-                                else:
-                                    st.warning("Marque a confirmação antes de excluir.")
-
-        # ---------------------------------------------------------------------
-        # RESUMO
-        # ---------------------------------------------------------------------
-        with tab3:
-            st.subheader("Resumo de recargas")
-
-            if usando_veiculo_online:
-                resumo, erro_resumo = obter_resumo_recargas_online(
-                    veiculo_id=veiculo_ativo.id_online,
-                    km_atual_veiculo=veiculo_ativo.km_atual
-                )
-
-                if erro_resumo:
-                    st.error("Erro ao calcular resumo online de recargas.")
-                    st.write(erro_resumo)
-                else:
-                    col1, col2, col3 = st.columns(3)
+                with st.expander(titulo):
+                    col1, col2, col3, col4 = st.columns(4)
 
                     with col1:
-                        st.metric("Total de recargas", resumo["total_recargas"])
+                        st.write("**Data**")
+                        st.write(r.get("data_recarga", "Não informada"))
 
                     with col2:
-                        st.metric("Energia total", f"{resumo['energia_total']:.2f} kWh")
+                        st.write("**Bateria**")
+                        st.write(
+                            f"{float(r.get('bateria_inicial') or 0):.1f}% → "
+                            f"{float(r.get('bateria_final') or 0):.1f}%"
+                        )
 
                     with col3:
-                        st.metric("Gasto total", f"R$ {resumo['custo_total']:.2f}")
-
-                    col4, col5, col6 = st.columns(3)
+                        st.write("**Energia**")
+                        st.write(f"{float(r.get('energia_kwh') or 0):.2f} kWh")
 
                     with col4:
-                        st.metric(
-                            "Custo médio por recarga",
-                            f"R$ {resumo['custo_medio_recarga']:.2f}"
+                        st.write("**Custo**")
+                        st.write(f"R$ {float(r.get('custo_total') or 0):.2f}")
+
+                    st.write(f"**Preço do kWh:** R$ {float(r.get('preco_kwh') or 0):.2f}")
+                    st.write(f"**Local:** {r.get('local', 'Não informado')}")
+                    st.write(f"**Tipo:** {r.get('tipo', 'Não informado')}")
+                    st.write(f"**KM no momento da recarga:** {r.get('km_atual', 0)} km")
+
+                    if r.get("observacao"):
+                        st.write(f"**Observação:** {r.get('observacao')}")
+
+                    st.divider()
+
+                    # ---------------------------------------------------------
+                    # EDITAR RECARGA ONLINE
+                    # ---------------------------------------------------------
+                    st.write("### Editar esta recarga")
+
+                    with st.form(f"form_editar_recarga_online_{r.get('id')}"):
+                        nova_bateria_inicial = st.number_input(
+                            "Bateria inicial (%)",
+                            min_value=0.0,
+                            max_value=100.0,
+                            step=1.0,
+                            value=float(r.get("bateria_inicial") or 0),
+                            key=f"editar_online_bateria_inicial_{r.get('id')}"
                         )
 
-                    with col5:
-                        st.metric(
-                            "Preço médio kWh",
-                            f"R$ {resumo['preco_medio_kwh']:.2f}"
+                        nova_bateria_final = st.number_input(
+                            "Bateria final (%)",
+                            min_value=0.0,
+                            max_value=100.0,
+                            step=1.0,
+                            value=float(r.get("bateria_final") or 0),
+                            key=f"editar_online_bateria_final_{r.get('id')}"
                         )
 
-                    with col6:
-                        if resumo["custo_real_km"] is not None:
-                            st.metric(
-                                "Custo real por km",
-                                f"R$ {resumo['custo_real_km']:.4f}"
-                            )
+                        nova_energia_kwh = st.number_input(
+                            "Energia carregada (kWh)",
+                            min_value=0.01,
+                            step=0.1,
+                            value=float(r.get("energia_kwh") or 0.01),
+                            key=f"editar_online_energia_{r.get('id')}"
+                        )
+
+                        novo_preco_kwh = st.number_input(
+                            "Preço do kWh (R$)",
+                            min_value=0.0,
+                            step=0.01,
+                            value=float(r.get("preco_kwh") or 0),
+                            key=f"editar_online_preco_{r.get('id')}"
+                        )
+
+                        novo_local = st.text_input(
+                            "Local da recarga",
+                            value=r.get("local", ""),
+                            key=f"editar_online_local_{r.get('id')}"
+                        )
+
+                        tipos_recarga = [
+                            "Residencial",
+                            "Pública lenta",
+                            "Pública rápida",
+                            "Gratuita",
+                            "Outro"
+                        ]
+
+                        tipo_atual = r.get("tipo", "Outro")
+
+                        if tipo_atual in tipos_recarga:
+                            indice_tipo = tipos_recarga.index(tipo_atual)
                         else:
-                            st.metric("Custo real por km", "Indisponível")
+                            indice_tipo = 4
 
-                    if resumo["consumo_real_km_kwh"] is not None:
-                        st.success(
-                            f"Consumo real aproximado: "
-                            f"{resumo['consumo_real_km_kwh']:.2f} km/kWh"
-                        )
-                        st.write(
-                            f"KM considerados desde a primeira recarga: "
-                            f"{resumo['km_rodados']} km"
-                        )
-                    else:
-                        st.info(
-                            "Para calcular consumo real, registre recargas e atualize "
-                            "a quilometragem após usar o veículo."
+                        novo_tipo = st.selectbox(
+                            "Tipo de recarga",
+                            tipos_recarga,
+                            index=indice_tipo,
+                            key=f"editar_online_tipo_{r.get('id')}"
                         )
 
-            else:
-                resumo = veiculo_ativo.obter_resumo_recargas()
+                        nova_observacao = st.text_area(
+                            "Observação",
+                            value=r.get("observacao", ""),
+                            key=f"editar_online_observacao_{r.get('id')}"
+                        )
 
-                col1, col2, col3 = st.columns(3)
+                        novo_custo_total = nova_energia_kwh * novo_preco_kwh
 
-                with col1:
-                    st.metric("Total de recargas", resumo["total_recargas"])
+                        st.info(f"Custo total recalculado: R$ {novo_custo_total:.2f}")
 
-                with col2:
-                    st.metric("Energia total", f"{resumo['energia_total']:.2f} kWh")
+                        confirmar_edicao = st.form_submit_button(
+                            "Salvar alterações desta recarga"
+                        )
 
-                with col3:
-                    st.metric("Gasto total", f"R$ {resumo['custo_total']:.2f}")
+                        if confirmar_edicao:
+                            if nova_bateria_final < nova_bateria_inicial:
+                                st.error("A bateria final não pode ser menor que a inicial.")
+                            else:
+                                ok, resposta = editar_recarga_online(
+                                    recarga_id=r.get("id"),
+                                    bateria_inicial=nova_bateria_inicial,
+                                    bateria_final=nova_bateria_final,
+                                    energia_kwh=nova_energia_kwh,
+                                    preco_kwh=novo_preco_kwh,
+                                    local=novo_local,
+                                    tipo=novo_tipo,
+                                    observacao=nova_observacao
+                                )
 
-                col4, col5, col6 = st.columns(3)
+                                if ok:
+                                    st.success("Recarga online editada com sucesso.")
+                                    st.rerun()
+                                else:
+                                    st.error("Não foi possível editar a recarga online.")
+                                    st.write(resposta)
 
-                with col4:
+                    st.divider()
+
+                    # ---------------------------------------------------------
+                    # EXCLUIR RECARGA ONLINE
+                    # ---------------------------------------------------------
+                    st.write("### Excluir esta recarga")
+
+                    confirmar_exclusao = st.checkbox(
+                        "Confirmo que desejo excluir esta recarga",
+                        key=f"confirmar_excluir_online_{r.get('id')}"
+                    )
+
+                    if st.button(
+                        "Excluir recarga online",
+                        key=f"botao_excluir_recarga_online_{r.get('id')}"
+                    ):
+                        if confirmar_exclusao:
+                            ok, resposta = excluir_recarga_online(r.get("id"))
+
+                            if ok:
+                                st.success("Recarga online excluída com sucesso.")
+                                st.rerun()
+                            else:
+                                st.error("Não foi possível excluir a recarga online.")
+                                st.write(resposta)
+                        else:
+                            st.warning("Marque a confirmação antes de excluir.")
+
+    # -------------------------------------------------------------------------
+    # RESUMO ONLINE
+    # -------------------------------------------------------------------------
+    with tab3:
+        st.subheader("Resumo de recargas online")
+
+        resumo, erro_resumo = obter_resumo_recargas_online(
+            veiculo_id=veiculo_ativo.id_online,
+            km_atual_veiculo=veiculo_ativo.km_atual
+        )
+
+        if erro_resumo:
+            st.error("Erro ao calcular resumo online de recargas.")
+            st.write(erro_resumo)
+        else:
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric("Total de recargas", resumo["total_recargas"])
+
+            with col2:
+                st.metric("Energia total", f"{resumo['energia_total']:.2f} kWh")
+
+            with col3:
+                st.metric("Gasto total", f"R$ {resumo['custo_total']:.2f}")
+
+            col4, col5, col6 = st.columns(3)
+
+            with col4:
+                st.metric(
+                    "Custo médio por recarga",
+                    f"R$ {resumo['custo_medio_recarga']:.2f}"
+                )
+
+            with col5:
+                st.metric(
+                    "Preço médio kWh",
+                    f"R$ {resumo['preco_medio_kwh']:.2f}"
+                )
+
+            with col6:
+                if resumo["custo_real_km"] is not None:
                     st.metric(
-                        "Custo médio por recarga",
-                        f"R$ {resumo['custo_medio_recarga']:.2f}"
+                        "Custo real por km",
+                        f"R$ {resumo['custo_real_km']:.4f}"
                     )
-
-                with col5:
-                    st.metric(
-                        "Preço médio kWh",
-                        f"R$ {resumo['preco_medio_kwh']:.2f}"
-                    )
-
-                with col6:
-                    if resumo["custo_real_km"] is not None:
-                        st.metric(
-                            "Custo real por km",
-                            f"R$ {resumo['custo_real_km']:.4f}"
-                        )
-                    else:
-                        st.metric("Custo real por km", "Indisponível")
-
-                if resumo["consumo_real_km_kwh"] is not None:
-                    st.success(
-                        f"Consumo real aproximado: "
-                        f"{resumo['consumo_real_km_kwh']:.2f} km/kWh"
-                    )
-                    st.write(f"KM considerados desde a primeira recarga: {resumo['km_rodados']} km")
                 else:
-                    st.info(
-                        "Para calcular consumo real, registre recargas e atualize "
-                        "a quilometragem após usar o veículo."
-                    )
+                    st.metric("Custo real por km", "Indisponível")
+
+            if resumo["consumo_real_km_kwh"] is not None:
+                st.success(
+                    f"Consumo real aproximado: "
+                    f"{resumo['consumo_real_km_kwh']:.2f} km/kWh"
+                )
+                st.write(
+                    f"KM considerados desde a primeira recarga: "
+                    f"{resumo['km_rodados']} km"
+                )
+            else:
+                st.info(
+                    "Para calcular consumo real, registre recargas e atualize "
+                    "a quilometragem após usar o veículo."
+                )
    
 
 # =============================================================================
