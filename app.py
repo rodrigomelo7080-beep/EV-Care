@@ -658,18 +658,50 @@ else:
 if pagina == "Dashboard":
     st.header("Dashboard")
 
-    if not veiculo_ativo:
-        mostrar_onboarding_sem_veiculo()
+    if not validar_contexto_online("Dashboard"):
+        st.stop()
     else:
-        # Garante que o plano de manutenção esteja atualizado para veículos antigos
+        veiculo_ativo = obter_veiculo_ativo()
+
         garantir_plano_manutencao_expandido(veiculo_ativo)
-        mostrar_guia_primeiro_uso(garagem, veiculo_ativo)        
+
+        st.success("Modo online: o Dashboard está usando dados do Supabase.")
+        st.caption(
+            "Garagem, quilometragem e recargas já estão sendo carregadas do banco online."
+        )
+
         st.divider()
 
+        resumo_recargas, erro_resumo_dashboard = obter_resumo_recargas_online(
+            veiculo_id=veiculo_ativo.id_online,
+            km_atual_veiculo=veiculo_ativo.km_atual
+        )
 
+        if erro_resumo_dashboard:
+            st.error("Erro ao carregar resumo online de recargas.")
+            st.write(erro_resumo_dashboard)
 
-        resumo_recargas = veiculo_ativo.obter_resumo_recargas()
-        ultima_recarga = veiculo_ativo.obter_ultima_recarga()
+            resumo_recargas = {
+                "total_recargas": 0,
+                "energia_total": 0,
+                "custo_total": 0,
+                "custo_medio_recarga": 0,
+                "preco_medio_kwh": 0,
+                "custo_real_km": None,
+                "consumo_real_km_kwh": None,
+                "km_rodados": 0
+            }
+
+        recargas_online, erro_recargas_dashboard = listar_recargas_online(
+            veiculo_ativo.id_online
+        )
+
+        if erro_recargas_dashboard:
+            st.error("Erro ao carregar última recarga online.")
+            st.write(erro_recargas_dashboard)
+            recargas_online = []
+
+        ultima_recarga = recargas_online[0] if recargas_online else None
 
         autonomia = veiculo_ativo.calcular_autonomia()
         saude_bateria = veiculo_ativo.calcular_saude_bateria()
@@ -761,7 +793,7 @@ if pagina == "Dashboard":
         st.divider()
 
         # ---------------------------------------------------------------------
-        # ÚLTIMA RECARGA
+        # ÚLTIMA RECARGA ONLINE
         # ---------------------------------------------------------------------
         st.subheader("Última recarga")
 
@@ -770,7 +802,7 @@ if pagina == "Dashboard":
 
             with col_r1:
                 st.write("**Data**")
-                st.write(ultima_recarga.get("data", "Não informada"))
+                st.write(ultima_recarga.get("data_recarga", "Não informada"))
 
             with col_r2:
                 st.write("**Local**")
@@ -778,21 +810,25 @@ if pagina == "Dashboard":
 
             with col_r3:
                 st.write("**Energia**")
-                st.write(f"{ultima_recarga.get('energia_kwh', 0):.2f} kWh")
+                st.write(f"{float(ultima_recarga.get('energia_kwh') or 0):.2f} kWh")
 
             with col_r4:
                 st.write("**Custo**")
-                st.write(f"R$ {ultima_recarga.get('custo_total', 0):.2f}")
+                st.write(f"R$ {float(ultima_recarga.get('custo_total') or 0):.2f}")
 
             st.write(
                 f"**Bateria:** "
-                f"{ultima_recarga.get('bateria_inicial', 0):.1f}% → "
-                f"{ultima_recarga.get('bateria_final', 0):.1f}%"
+                f"{float(ultima_recarga.get('bateria_inicial') or 0):.1f}% → "
+                f"{float(ultima_recarga.get('bateria_final') or 0):.1f}%"
             )
 
             st.write(f"**Tipo:** {ultima_recarga.get('tipo', 'Não informado')}")
+            st.write(f"**KM no momento da recarga:** {ultima_recarga.get('km_atual', 0)} km")
+
+            if ultima_recarga.get("observacao"):
+                st.write(f"**Observação:** {ultima_recarga.get('observacao')}")
         else:
-            st.info("Nenhuma recarga registrada ainda.")
+            st.info("Nenhuma recarga online registrada ainda.")
 
         st.divider()
 
@@ -922,8 +958,25 @@ if pagina == "Dashboard":
             "Este dashboard usa os dados salvos da garagem, recargas, quilometragem "
             "e plano de manutenção do veículo ativo."
         )
-        mostrar_alertas_de_uso(veiculo_ativo)
+        st.subheader("Orientações rápidas")
 
+        if not recargas_online:
+            st.info(
+                "Registre sua primeira recarga em **Recargas** para calcular gasto total, "
+                "preço médio do kWh, custo real por km e consumo real."
+            )
+
+        if resumo_recargas["custo_real_km"] is None and recargas_online:
+            st.info(
+                "Para melhorar o cálculo de custo real por km, registre recargas "
+                "e mantenha a quilometragem atualizada."
+            )
+
+        if resumo_recargas["consumo_real_km_kwh"] is None and recargas_online:
+            st.info(
+                "O consumo real será calculado com mais precisão conforme você registrar "
+                "recargas e atualizar a quilometragem."
+            )
         st.divider()
 
         st.caption(
