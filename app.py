@@ -17,6 +17,10 @@ from veiculos_db import (
     obter_veiculo_ativo_online,
     excluir_veiculo_online
 )
+from quilometragem_db import (
+    atualizar_km_veiculo_online,
+    listar_historico_km_online
+)
 
 from veiculo_online_adapter import converter_veiculo_online
 from ev_care_base import (
@@ -1242,6 +1246,17 @@ elif pagina == "Quilometragem":
     if not veiculo_ativo:
         st.warning("Selecione ou cadastre um veículo antes de atualizar a quilometragem.")
     else:
+        usando_veiculo_online = (
+            st.session_state.get("auth_logado", False)
+            and getattr(veiculo_ativo, "origem_dados", None) == "supabase"
+            and getattr(veiculo_ativo, "id_online", None)
+        )
+
+        if usando_veiculo_online:
+            st.success("Modo online: a quilometragem será salva no Supabase.")
+        else:
+            st.info("Modo local: a quilometragem será salva no armazenamento local/JSON.")
+
         st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
 
         col1, col2, col3 = st.columns(3)
@@ -1271,34 +1286,79 @@ elif pagina == "Quilometragem":
 
             if confirmar:
                 if nova_km < veiculo_ativo.km_atual:
-                    st.error(f"A nova KM deve ser maior ou igual à atual ({veiculo_ativo.km_atual} km).")
+                    st.error(
+                        f"A nova KM deve ser maior ou igual à atual "
+                        f"({veiculo_ativo.km_atual} km)."
+                    )
                 elif nova_km == veiculo_ativo.km_atual:
                     st.info("A quilometragem informada é igual à atual. Nenhuma alteração foi feita.")
                 else:
-                    if veiculo_ativo.atualizar_km(nova_km):
-                        salvar_estado()
-                        st.success("Quilometragem atualizada com sucesso.")
-                        st.rerun()
+                    if usando_veiculo_online:
+                        ok, mensagem = atualizar_km_veiculo_online(
+                            user_id=st.session_state.auth_user_id,
+                            veiculo_id=veiculo_ativo.id_online,
+                            km_anterior=veiculo_ativo.km_atual,
+                            km_nova=nova_km
+                        )
+
+                        if ok:
+                            st.success(mensagem)
+                            carregar_veiculo_online_ativo_para_app()
+                            st.rerun()
+                        else:
+                            st.error("Não foi possível atualizar a quilometragem online.")
+                            st.write(mensagem)
+
                     else:
-                        st.error("Não foi possível atualizar a quilometragem.")
+                        if veiculo_ativo.atualizar_km(nova_km):
+                            salvar_estado()
+                            st.success("Quilometragem atualizada com sucesso.")
+                            st.rerun()
+                        else:
+                            st.error("Não foi possível atualizar a quilometragem.")
 
         st.divider()
 
         st.subheader("Histórico de quilometragem")
 
-        if not veiculo_ativo.historico_km:
-            st.info("Ainda não há registros de alteração de quilometragem.")
+        if usando_veiculo_online:
+            historico_online, erro_historico = listar_historico_km_online(
+                veiculo_ativo.id_online
+            )
+
+            if erro_historico:
+                st.error("Erro ao carregar histórico online de quilometragem.")
+                st.write(erro_historico)
+            elif not historico_online:
+                st.info("Ainda não há registros online de alteração de quilometragem.")
+            else:
+                for registro in historico_online:
+                    km_anterior = int(registro.get("km_anterior", 0))
+                    km_nova = int(registro.get("km_nova", 0))
+                    diferenca = km_nova - km_anterior
+
+                    with st.container(border=True):
+                        st.write(f"**Data:** {registro.get('data_registro', 'Não informada')}")
+                        st.write(f"**KM anterior:** {km_anterior} km")
+                        st.write(f"**Nova KM:** {km_nova} km")
+
+                        if diferenca >= 0:
+                            st.write(f"**Diferença registrada:** {diferenca} km")
+
         else:
-            for registro in reversed(veiculo_ativo.historico_km):
-                with st.container(border=True):
-                    st.write(f"**Data:** {registro.get('data', 'Não informada')}")
-                    st.write(f"**KM anterior:** {registro.get('km_anterior', 0)} km")
-                    st.write(f"**Nova KM:** {registro.get('km_nova', 0)} km")
+            if not veiculo_ativo.historico_km:
+                st.info("Ainda não há registros de alteração de quilometragem.")
+            else:
+                for registro in reversed(veiculo_ativo.historico_km):
+                    with st.container(border=True):
+                        st.write(f"**Data:** {registro.get('data', 'Não informada')}")
+                        st.write(f"**KM anterior:** {registro.get('km_anterior', 0)} km")
+                        st.write(f"**Nova KM:** {registro.get('km_nova', 0)} km")
 
-                    diferenca = int(registro.get("km_nova", 0)) - int(registro.get("km_anterior", 0))
+                        diferenca = int(registro.get("km_nova", 0)) - int(registro.get("km_anterior", 0))
 
-                    if diferenca >= 0:
-                        st.write(f"**Diferença registrada:** {diferenca} km")
+                        if diferenca >= 0:
+                            st.write(f"**Diferença registrada:** {diferenca} km")
 
 # =============================================================================
 # RECARGAS
