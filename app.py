@@ -2861,7 +2861,7 @@ elif pagina == "Configurações":
                     "Vá em Minha Garagem e defina ou cadastre um veículo online."
                 )
             else:
-                veiculo_convertido = converter_veiculo_online_para_veiculo_ev(
+                veiculo_convertido = converter_veiculo_online(
                     registro_ativo_online
                 )
 
