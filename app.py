@@ -486,14 +486,16 @@ def validar_contexto_online(nome_pagina):
     """
     Valida se o usuário está logado e possui um veículo online ativo.
 
-    Retorna True quando a página pode continuar.
-    Retorna False quando a página deve ser bloqueada.
+    Antes de bloquear, tenta carregar ou ativar automaticamente
+    um veículo do usuário.
     """
     if not st.session_state.get("auth_logado", False):
         st.warning(
             f"Para usar **{nome_pagina}**, faça login na página **Conta**."
         )
         return False
+
+    carregar_veiculo_online_ativo_para_app()
 
     veiculo = obter_veiculo_ativo()
 
@@ -505,15 +507,15 @@ def validar_contexto_online(nome_pagina):
 
     if getattr(veiculo, "origem_dados", None) != "supabase":
         st.warning(
-            f"Para usar **{nome_pagina}**, é necessário um veículo online ativo. "
-            "Acesse **Minha Garagem** e cadastre ou ative um veículo salvo na nuvem."
+            f"Para usar **{nome_pagina}**, é necessário ter um veículo cadastrado "
+            "na sua conta."
         )
         return False
 
     if not getattr(veiculo, "id_online", None):
         st.warning(
-            f"O veículo ativo não possui ID online. Acesse **Minha Garagem** "
-            "e selecione um veículo salvo no Supabase."
+            f"O veículo ativo não possui identificação online. "
+            "Acesse **Minha Garagem** e selecione um veículo."
         )
         return False
 
@@ -521,73 +523,94 @@ def validar_contexto_online(nome_pagina):
 
 def carregar_veiculo_online_ativo_para_app():
     """
-    Busca o veículo    Busca o veículo ativo online no Supabase, converte para VeiculoEV
+    Carrega o veículo ativo do usuário logado.
+
+    Se nenhum veículo estiver marcado como ativo no Supabase,
+    mas o usuário tiver veículos cadastrados, o app ativa automaticamente
+    o primeiro veículo encontrado.
+    """
+    if not st.session_state.get("auth_logado", False):
+        st.session_state.veiculo_ativo = None
         st.session_state.veiculo_ativo_origem = None
+        st.session_state.erro_veiculo_online_ativo = None
         return False
 
-    # Se não houver veículo ativo, tenta ativar automaticamente o primeiro veículo do usuário
+    registro_online, erro = obter_veiculo_ativo_online()
+
+    if erro:
+        st.session_state.veiculo_ativo = None
+        st.session_state.veiculo_ativo_origem = None
+        st.session_state.erro_veiculo_online_ativo = erro
+        return False
+
+    # Se não houver veículo ativo, tenta ativar automaticamente o primeiro veículo da conta
     if not registro_online:
         veiculos_usuario, erro_lista = listar_veiculos_usuario()
 
         if erro_lista:
-            st.session_state.erro_veiculo_online_ativo = erro_lista
             st.session_state.veiculo_ativo = None
             st.session_state.veiculo_ativo_origem = None
+            st.session_state.erro_veiculo_online_ativo = erro_lista
             return False
 
         if not veiculos_usuario:
-            st.session_state.erro_veiculo_online_ativo = None
             st.session_state.veiculo_ativo = None
             st.session_state.veiculo_ativo_origem = None
+            st.session_state.erro_veiculo_online_ativo = None
             return False
 
         primeiro_veiculo = veiculos_usuario[0]
         primeiro_veiculo_id = primeiro_veiculo.get("id")
 
-        if primeiro_veiculo_id:
-            ok_ativar, resposta_ativar = definir_veiculo_ativo_online(
-                primeiro_veiculo_id
-            )
+        if not primeiro_veiculo_id:
+            st.session_state.veiculo_ativo = None
+            st.session_state.veiculo_ativo_origem = None
+            st.session_state.erro_veiculo_online_ativo = "Veículo sem ID online."
+            return False
 
-            if not ok_ativar:
-                st.session_state.erro_veiculo_online_ativo = resposta_ativar
-                st.session_state.veiculo_ativo = None
-                st.session_state.veiculo_ativo_origem = None
-                return False
+        ok_ativar, resposta_ativar = definir_veiculo_ativo_online(
+            primeiro_veiculo_id
+        )
 
-            registro_online, erro = obter_veiculo_ativo_online()
+        if not ok_ativar:
+            st.session_state.veiculo_ativo = None
+            st.session_state.veiculo_ativo_origem = None
+            st.session_state.erro_veiculo_online_ativo = resposta_ativar
+            return False
 
-            if erro:
-                st.session_state.erro_veiculo_online_ativo = erro
-                st.session_state.veiculo_ativo = None
-                st.session_state.veiculo_ativo_origem = None
-                return False
+        registro_online, erro = obter_veiculo_ativo_online()
+
+        if erro:
+            st.session_state.veiculo_ativo = None
+            st.session_state.veiculo_ativo_origem = None
+            st.session_state.erro_veiculo_online_ativo = erro
+            return False
 
     if not registro_online:
-        st.session_state.erro_veiculo_online_ativo = None
         st.session_state.veiculo_ativo = None
         st.session_state.veiculo_ativo_origem = None
+        st.session_state.erro_veiculo_online_ativo = None
         return False
 
     user_id_registro = registro_online.get("user_id")
     user_id_sessao = st.session_state.get("auth_user_id")
 
     if user_id_registro and user_id_sessao and user_id_registro != user_id_sessao:
+        st.session_state.veiculo_ativo = None
+        st.session_state.veiculo_ativo_origem = None
         st.session_state.erro_veiculo_online_ativo = (
             "O veículo carregado não pertence ao usuário atual."
         )
-        st.session_state.veiculo_ativo = None
-        st.session_state.veiculo_ativo_origem = None
         return False
 
     veiculo_convertido = converter_veiculo_online(registro_online)
 
     if veiculo_convertido is None:
-        st.session_state.erro_veiculo_online_ativo = (
-            "Não foi possível converter o veículo online."
-        )
         st.session_state.veiculo_ativo = None
         st.session_state.veiculo_ativo_origem = None
+        st.session_state.erro_veiculo_online_ativo = (
+            "Não foi possível converter o veículo ativo."
+        )
         return False
 
     garantir_plano_manutencao_expandido(veiculo_convertido)
@@ -597,21 +620,6 @@ def carregar_veiculo_online_ativo_para_app():
     st.session_state.erro_veiculo_online_ativo = None
 
     return True
-
-    e define como veículo ativo do aplicativo.
-
-    Se o usuário tiver veículos, mas nenhum estiver marcado como ativo,
-    o app define automaticamente o primeiro veículo encontrado como ativo.
-    """
-    if not st.session_state.get("auth_logado", False):
-        st.session_state.veiculo_ativo = None
-        st.session_state.veiculo_ativo_origem = None
-        return False
-
-    registro_online, erro = obter_veiculo_ativo_online()
-
-    if erro:
-        st.session_state.erro_veiculo_online_ativo = erro
 
 
 
