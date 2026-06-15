@@ -1621,12 +1621,13 @@ elif pagina == "Recargas":
 
     tab1, tab2, tab3, tab4 = st.tabs(
         [
-            "Painel de manutenção",
+            "Painel",
             "Registrar manutenção",
             "Plano manual",
             "Histórico"
         ]
     )
+
 
     # -------------------------------------------------------------------------
     # PAINEL DE MANUTENÇÃO ONLINE
@@ -1974,7 +1975,7 @@ elif pagina == "Recargas":
     # HISTÓRICO DE MANUTENÇÕES ONLINE
     # -------------------------------------------------------------------------
     with tab4:
-        st.subheader("Histórico online de manutenções")
+        st.subheader("Histórico de manutenções")
 
         historico_manutencoes, erro_historico = listar_manutencoes_online(
             veiculo_ativo.id_online
@@ -2054,7 +2055,7 @@ elif pagina == "Manutenções":
         [
             "Painel",
             "Registrar Manutenção",
-            "Plano Manual"
+            "Plano Manual",
             "Histórico"
         ]
     )
