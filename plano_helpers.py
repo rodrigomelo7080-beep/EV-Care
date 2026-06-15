@@ -136,11 +136,13 @@ def obter_limite_veiculos():
     """
     Retorna o limite de veículos permitido para o plano atual.
     None significa ilimitado.
-    """
-    plano = obter_plano_usuario()
-    regras = LIMITES_PLANO.get(plano, LIMITES_PLANO[PLANO_FREE])
 
-    return regras.get("limite_veiculos", 1)
+    O plano Plus só libera veículos ilimitados quando a assinatura está ativa.
+    """
+    if usuario_plus_ativo():
+        return LIMITES_PLANO[PLANO_PLUS].get("limite_veiculos")
+
+    return LIMITES_PLANO[PLANO_FREE].get("limite_veiculos", 1)
 
 
 def pode_criar_veiculo(quantidade_atual):
@@ -169,9 +171,15 @@ def pode_criar_veiculo(quantidade_atual):
 def recurso_disponivel(nome_recurso):
     """
     Verifica se um recurso está disponível para o plano atual.
+
+    Recursos Plus só ficam disponíveis se:
+    - plano = plus
+    - status_assinatura = active
     """
-    plano = obter_plano_usuario()
-    regras = LIMITES_PLANO.get(plano, LIMITES_PLANO[PLANO_FREE])
+    if not usuario_plus_ativo():
+        return False
+
+    regras = LIMITES_PLANO.get(PLANO_PLUS, {})
 
     return bool(regras.get(nome_recurso, False))
 

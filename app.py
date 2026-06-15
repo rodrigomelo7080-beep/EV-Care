@@ -13,7 +13,10 @@ from plano_helpers import (
     pode_criar_veiculo,
     recurso_disponivel,
     exibir_bloqueio_plus,
-    exibir_resumo_plano
+    exibir_resumo_plano,
+    obter_recursos_plus,
+    mensagem_recurso_plus,
+    usuario_plus_ativo
 )
 
 from veiculos_db import (
@@ -2279,6 +2282,37 @@ elif pagina == "Planos":
         - Base para plano Free e Plus
         """
     )
+    st.divider()
+
+    st.subheader("Recursos Plus")
+
+    st.write(
+        "Estes recursos fazem parte da evolução planejada do EV Care Plus."
+    )
+
+    recursos_plus = obter_recursos_plus()
+
+    for codigo_recurso, nome_recurso in recursos_plus.items():
+        with st.container(border=True):
+            st.write(f"### {nome_recurso}")
+
+            if recurso_disponivel(codigo_recurso):
+                st.success("Disponível no seu plano.")
+                st.caption(
+                    "Este recurso está liberado para usuários Plus ativos. "
+                    "Algumas funcionalidades podem ser ativadas progressivamente."
+                )
+            else:
+                st.warning(mensagem_recurso_plus(codigo_recurso))
+
+                if st.session_state.get("auth_logado", False):
+                    st.caption(
+                        "Seu plano atual ainda não libera este recurso."
+                    )
+                else:
+                    st.caption(
+                        "Faça login para verificar seu plano."
+                    )
 
 # =============================================================================
 # FEEDBACK
