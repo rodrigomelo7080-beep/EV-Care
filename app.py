@@ -1996,6 +1996,220 @@ elif pagina == "Recargas":
                         st.write(f"**Observação:** {registro.get('observacao')}")
 
 
+
+
+
+# =============================================================================
+# MANUTENÇÕES
+# =============================================================================
+
+elif pagina == "Manutenções":
+    st.header("Manutenções")
+
+    if not validar_contexto_online("Manutenções"):
+        st.stop()
+
+    veiculo_ativo = obter_veiculo_ativo()
+
+    st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
+    st.write(f"KM atual: **{veiculo_ativo.km_atual} km**")
+
+    st.divider()
+
+    servicos_online, erro_servicos = listar_servicos_manutencao_online(
+        veiculo_ativo.id_online
+    )
+
+    if erro_servicos:
+        st.error("Erro ao carregar o plano de manutenção.")
+        st.write(erro_servicos)
+        st.stop()
+
+    if not servicos_online:
+        ok_plano, resposta_plano = criar_plano_padrao_manutencao_online(
+            user_id=st.session_state.auth_user_id,
+            veiculo_id=veiculo_ativo.id_online,
+            km_atual=veiculo_ativo.km_atual
+        )
+
+        if ok_plano:
+            st.info("Plano de manutenção criado para este veículo.")
+            st.rerun()
+        else:
+            st.error("Não foi possível criar o plano de manutenção.")
+            st.write(resposta_plano)
+            st.stop()
+
+    resumo_manutencao, erro_resumo_manutencao = obter_resumo_manutencoes_online(
+        veiculo_id=veiculo_ativo.id_online,
+        km_atual=veiculo_ativo.km_atual
+    )
+
+    if erro_resumo_manutencao:
+        st.error("Erro ao calcular o resumo de manutenção.")
+        st.write(erro_resumo_manutencao)
+        st.stop()
+
+    tab1, tab2, tab3 = st.tabs(
+        [
+            "Painel",
+            "Registrar manutenção",
+            "Histórico"
+        ]
+    )
+
+    # -------------------------------------------------------------------------
+    # PAINEL
+    # -------------------------------------------------------------------------
+    with tab1:
+        st.subheader("Painel de manutenção")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("Total de serviços", resumo_manutencao["total_servicos"])
+
+        with col2:
+            st.metric("Vencidos", len(resumo_manutencao["vencidos"]))
+
+        with col3:
+            st.metric("Próximos", len(resumo_manutencao["proximos"]))
+
+        with col4:
+            st.metric("Em dia", len(resumo_manutencao["em_dia"]))
+
+        st.divider()
+
+        if not resumo_manutencao["itens_status"]:
+            st.info("Nenhum serviço de manutenção cadastrado.")
+        else:
+            for servico, dados in resumo_manutencao["itens_status"]:
+                with st.container(border=True):
+                    col_a, col_b, col_c = st.columns(3)
+
+                    with col_a:
+                        st.write(f"### {servico.get('nome', 'Serviço não informado')}")
+                        st.write(f"Categoria: **{dados['categoria']}**")
+                        st.write(f"Criticidade: **{dados['criticidade']}**")
+
+                    with col_b:
+                        st.write(f"Status: **{dados['status']}**")
+                        st.write(f"Intervalo: **{dados['intervalo_km']} km**")
+
+                        if dados["intervalo_meses"]:
+                            st.write(f"Tempo: **{dados['intervalo_meses']} meses**")
+
+                    with col_c:
+                        st.write(f"Última feita em: **{dados['ultima_km']} km**")
+                        st.write(f"Próxima em: **{dados['proxima_km']} km**")
+
+                        if dados["km_restante"] >= 0:
+                            st.write(f"Faltam: **{dados['km_restante']} km**")
+                        else:
+                            st.write(f"Vencida há: **{abs(dados['km_restante'])} km**")
+
+                    if dados["descricao"]:
+                        st.caption(dados["descricao"])
+
+                    if dados["status"] == "Vencido":
+                        st.error("Manutenção vencida.")
+                    elif dados["status"] == "Próximo":
+                        st.warning("Manutenção próxima.")
+                    else:
+                        st.success("Manutenção em dia.")
+
+    # -------------------------------------------------------------------------
+    # REGISTRAR MANUTENÇÃO
+    # -------------------------------------------------------------------------
+    with tab2:
+        st.subheader("Registrar manutenção realizada")
+
+        servicos_ativos = resumo_manutencao["servicos"]
+
+        if not servicos_ativos:
+            st.info("Nenhum serviço disponível para registrar.")
+        else:
+            nomes_servicos = [
+                servico.get("nome", "Serviço sem nome")
+                for servico in servicos_ativos
+            ]
+
+            indice_servico = st.selectbox(
+                "Serviço realizado",
+                range(len(servicos_ativos)),
+                format_func=lambda i: nomes_servicos[i],
+                key="indice_servico_manutencao_online"
+            )
+
+            servico_escolhido = servicos_ativos[indice_servico]
+
+            status_servico = None
+
+            for servico, dados in resumo_manutencao["itens_status"]:
+                if servico.get("id") == servico_escolhido.get("id"):
+                    status_servico = dados
+                    break
+
+            if status_servico:
+                st.info(
+                    f"Serviço: {servico_escolhido.get('nome')} | "
+                    f"Status atual: {status_servico['status']} | "
+                    f"KM atual: {veiculo_ativo.km_atual} km | "
+                    f"Próxima prevista em: {status_servico['proxima_km']} km"
+                )
+
+            observacao_manutencao = st.text_area(
+                "Observação da manutenção",
+                key="observacao_manutencao_online"
+            )
+
+            if st.button("Registrar manutenção"):
+                ok, resposta = registrar_manutencao_online(
+                    user_id=st.session_state.auth_user_id,
+                    veiculo_id=veiculo_ativo.id_online,
+                    servico_id=servico_escolhido.get("id"),
+                    nome_servico=servico_escolhido.get("nome"),
+                    km_realizada=veiculo_ativo.km_atual,
+                    observacao=observacao_manutencao
+                )
+
+                if ok:
+                    st.success(
+                        "Manutenção registrada com sucesso. "
+                        "O cálculo da próxima manutenção foi atualizado."
+                    )
+                    st.rerun()
+                else:
+                    st.error("Não foi possível registrar a manutenção.")
+                    st.write(resposta)
+
+    # -------------------------------------------------------------------------
+    # HISTÓRICO
+    # -------------------------------------------------------------------------
+    with tab3:
+        st.subheader("Histórico de manutenções")
+
+        historico_manutencoes, erro_historico = listar_manutencoes_online(
+            veiculo_ativo.id_online
+        )
+
+        if erro_historico:
+            st.error("Erro ao carregar histórico de manutenções.")
+            st.write(erro_historico)
+        elif not historico_manutencoes:
+            st.info("Nenhuma manutenção registrada.")
+        else:
+            for registro in historico_manutencoes:
+                with st.container(border=True):
+                    st.write(f"**Serviço:** {registro.get('nome_servico', 'Não informado')}")
+                    st.write(f"**KM realizada:** {registro.get('km_realizada', 0)} km")
+                    st.write(f"**Data:** {registro.get('data_realizada', 'Não informada')}")
+
+                    if registro.get("observacao"):
+                        st.write(f"**Observação:** {registro.get('observacao')}")
+
+
+
 # =============================================================================
 # VIAGENS
 # =============================================================================
