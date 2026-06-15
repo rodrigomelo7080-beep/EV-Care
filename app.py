@@ -1,5 +1,7 @@
 import streamlit as st
 import json
+import csv
+import io
 from datetime import datetime
 from auth_helpers import (
     inicializar_estado_auth,
@@ -294,6 +296,50 @@ def obter_veiculo_ativo():
 def obter_garagem():
     return st.session_state.get("garagem", [])
 
+def gerar_csv_recargas(recargas):
+    """
+    Gera um arquivo CSV em texto com as recargas do veículo.
+    Usa separador ';' para facilitar abertura no Excel em PT-BR.
+    """
+    saida = io.StringIO()
+
+    # BOM UTF-8 para o Excel reconhecer acentos corretamente
+    saida.write("\ufeff")
+
+    escritor = csv.writer(saida, delimiter=";")
+
+    escritor.writerow(
+        [
+            "Data da recarga",
+            "KM atual",
+            "Bateria inicial (%)",
+            "Bateria final (%)",
+            "Energia carregada (kWh)",
+            "Preço do kWh (R$)",
+            "Custo total (R$)",
+            "Local",
+            "Tipo",
+            "Observação"
+        ]
+    )
+
+    for recarga in recargas:
+        escritor.writerow(
+            [
+                recarga.get("data_recarga", ""),
+                recarga.get("km_atual", ""),
+                recarga.get("bateria_inicial", ""),
+                recarga.get("bateria_final", ""),
+                recarga.get("energia_kwh", ""),
+                recarga.get("preco_kwh", ""),
+                recarga.get("custo_total", ""),
+                recarga.get("local", ""),
+                recarga.get("tipo", ""),
+                recarga.get("observacao", "")
+            ]
+        )
+
+    return saida.getvalue()
     
 def calcular_progresso_inicial(garagem, veiculo_ativo):
     """
@@ -1443,25 +1489,44 @@ elif pagina == "Recargas":
                     "Para calcular consumo real, registre recargas e atualize "
                     "a quilometragem após usar o veículo."
                 )
-   
+    
+        st.divider()
 
-# =============================================================================
-# MANUTENÇÕES
-# =============================================================================
+        st.subheader("Exportação de recargas")
 
-elif pagina == "Manutenções":
-    st.header("Manutenções")
+        if recurso_disponivel("exportacao_excel"):
+            recargas_para_exportar, erro_exportacao = listar_recargas_online(
+                veiculo_ativo.id_online
+            )
 
-    if not validar_contexto_online("Manutenções"):
-        st.stop()
+            if erro_exportacao:
+                st.error("Não foi possível carregar as recargas para exportação.")
+                st.write(erro_exportacao)
+            elif not recargas_para_exportar:
+                st.info("Ainda não há recargas para exportar.")
+            else:
+                csv_recargas = gerar_csv_recargas(recargas_para_exportar)
 
-    veiculo_ativo = obter_veiculo_ativo()
+                nome_arquivo_csv = (
+                    f"ev_care_recargas_"
+                    f"{veiculo_ativo.marca}_{veiculo_ativo.modelo}.csv"
+                )
 
+                nome_arquivo_csv = nome_arquivo_csv.replace(" ", "_").lower()
 
-    st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
-    st.write(f"KM atual: **{veiculo_ativo.km_atual} km**")
+                st.download_button(
+                    label="Baixar recargas em CSV",
+                    data=csv_recargas,
+                    file_name=nome_arquivo_csv,
+                    mime="text/csv"
+                )
 
-    st.divider()
+                st.caption(
+                    "O arquivo CSV pode ser aberto no Excel, Google Planilhas "
+                    "ou outros aplicativos de planilha."
+                )
+        else:
+            exibir_bloqueio_plus("exportacao_excel")
 
     # -------------------------------------------------------------------------
     # GARANTIR PLANO ONLINE
