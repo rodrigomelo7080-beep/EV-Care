@@ -2050,10 +2050,11 @@ elif pagina == "Manutenções":
         st.write(erro_resumo_manutencao)
         st.stop()
 
-    tab1, tab2, tab3 = st.tabs(
+    tab1, tab2, tab3, tab4 = st.tabs(
         [
             "Painel",
-            "Registrar manutenção",
+            "Registrar Manutenção",
+            "Plano Manual"
             "Histórico"
         ]
     )
@@ -2184,9 +2185,229 @@ elif pagina == "Manutenções":
                     st.write(resposta)
 
     # -------------------------------------------------------------------------
-    # HISTÓRICO
+    # PLANO MANUAL
     # -------------------------------------------------------------------------
     with tab3:
+        st.subheader("Plano manual de manutenção")
+
+        subtab1, subtab2, subtab3 = st.tabs(
+            [
+                "Adicionar serviço",
+                "Editar serviço",
+                "Remover serviço"
+            ]
+        )
+
+        # ---------------------------------------------------------------------
+        # ADICIONAR SERVIÇO
+        # ---------------------------------------------------------------------
+        with subtab1:
+            st.write(
+                "Adicione serviços personalizados ao plano de manutenção deste veículo."
+            )
+
+            with st.form("form_adicionar_servico_online"):
+                nome_servico = st.text_input("Nome do serviço")
+
+                categoria = st.text_input(
+                    "Categoria",
+                    value="Personalizado"
+                )
+
+                intervalo_km = st.number_input(
+                    "Intervalo em km",
+                    min_value=1,
+                    step=1000,
+                    value=10000
+                )
+
+                intervalo_meses = st.number_input(
+                    "Intervalo em meses",
+                    min_value=0,
+                    step=1,
+                    value=12
+                )
+
+                criticidade = st.selectbox(
+                    "Criticidade",
+                    ["Baixa", "Média", "Alta"],
+                    index=1
+                )
+
+                descricao = st.text_area(
+                    "Descrição / observações",
+                    value="Serviço personalizado adicionado pelo usuário."
+                )
+
+                adicionar = st.form_submit_button("Adicionar serviço")
+
+                if adicionar:
+                    nome_limpo = nome_servico.strip()
+
+                    if not nome_limpo:
+                        st.error("Informe o nome do serviço.")
+                    else:
+                        ok, resposta = criar_servico_manutencao_online(
+                            user_id=st.session_state.auth_user_id,
+                            veiculo_id=veiculo_ativo.id_online,
+                            nome=nome_limpo,
+                            categoria=categoria.strip() if categoria.strip() else "Personalizado",
+                            intervalo_km=intervalo_km,
+                            intervalo_meses=intervalo_meses,
+                            criticidade=criticidade,
+                            descricao=descricao.strip(),
+                            ultima_km=0
+                        )
+
+                        if ok:
+                            st.success("Serviço adicionado com sucesso.")
+                            st.rerun()
+                        else:
+                            st.error("Não foi possível adicionar o serviço.")
+                            st.write(resposta)
+
+        # ---------------------------------------------------------------------
+        # EDITAR SERVIÇO
+        # ---------------------------------------------------------------------
+        with subtab2:
+            servicos_ativos = resumo_manutencao["servicos"]
+
+            if not servicos_ativos:
+                st.info("Nenhum serviço disponível para edição.")
+            else:
+                nomes_edicao = [
+                    servico.get("nome", "Serviço sem nome")
+                    for servico in servicos_ativos
+                ]
+
+                indice_edicao = st.selectbox(
+                    "Selecione o serviço para editar",
+                    range(len(servicos_ativos)),
+                    format_func=lambda i: nomes_edicao[i],
+                    key="indice_edicao_servico_online"
+                )
+
+                servico_edicao = servicos_ativos[indice_edicao]
+
+                with st.form("form_editar_servico_online"):
+                    novo_nome = st.text_input(
+                        "Nome do serviço",
+                        value=servico_edicao.get("nome", "")
+                    )
+
+                    nova_categoria = st.text_input(
+                        "Categoria",
+                        value=servico_edicao.get("categoria", "Geral")
+                    )
+
+                    novo_intervalo_km = st.number_input(
+                        "Intervalo em km",
+                        min_value=1,
+                        step=1000,
+                        value=int(servico_edicao.get("intervalo_km", 10000))
+                    )
+
+                    novo_intervalo_meses = st.number_input(
+                        "Intervalo em meses",
+                        min_value=0,
+                        step=1,
+                        value=int(servico_edicao.get("intervalo_meses", 0))
+                    )
+
+                    opcoes_criticidade = ["Baixa", "Média", "Alta"]
+                    criticidade_atual = servico_edicao.get("criticidade", "Média")
+
+                    if criticidade_atual in opcoes_criticidade:
+                        indice_criticidade = opcoes_criticidade.index(criticidade_atual)
+                    else:
+                        indice_criticidade = 1
+
+                    nova_criticidade = st.selectbox(
+                        "Criticidade",
+                        opcoes_criticidade,
+                        index=indice_criticidade
+                    )
+
+                    nova_descricao = st.text_area(
+                        "Descrição",
+                        value=servico_edicao.get("descricao", "")
+                    )
+
+                    salvar_edicao = st.form_submit_button("Salvar alterações")
+
+                    if salvar_edicao:
+                        if not novo_nome.strip():
+                            st.error("O nome do serviço não pode ficar vazio.")
+                        else:
+                            ok, resposta = editar_servico_manutencao_online(
+                                servico_id=servico_edicao.get("id"),
+                                nome=novo_nome.strip(),
+                                categoria=nova_categoria.strip() if nova_categoria.strip() else "Geral",
+                                intervalo_km=novo_intervalo_km,
+                                intervalo_meses=novo_intervalo_meses,
+                                criticidade=nova_criticidade,
+                                descricao=nova_descricao.strip()
+                            )
+
+                            if ok:
+                                st.success("Serviço atualizado com sucesso.")
+                                st.rerun()
+                            else:
+                                st.error("Não foi possível atualizar o serviço.")
+                                st.write(resposta)
+
+        # ---------------------------------------------------------------------
+        # REMOVER SERVIÇO
+        # ---------------------------------------------------------------------
+        with subtab3:
+            servicos_ativos = resumo_manutencao["servicos"]
+
+            if not servicos_ativos:
+                st.info("Nenhum serviço disponível para remoção.")
+            else:
+                nomes_remocao = [
+                    servico.get("nome", "Serviço sem nome")
+                    for servico in servicos_ativos
+                ]
+
+                indice_remocao = st.selectbox(
+                    "Selecione o serviço para remover do plano",
+                    range(len(servicos_ativos)),
+                    format_func=lambda i: nomes_remocao[i],
+                    key="indice_remocao_servico_online"
+                )
+
+                servico_remocao = servicos_ativos[indice_remocao]
+
+                st.warning(
+                    "A remoção desativa o serviço do plano futuro, mas não apaga "
+                    "registros antigos de manutenção."
+                )
+
+                confirmacao = st.text_input(
+                    "Digite REMOVER para confirmar",
+                    key="confirmacao_remover_servico_online"
+                )
+
+                if st.button("Remover serviço do plano"):
+                    if confirmacao.strip().upper() != "REMOVER":
+                        st.warning("Digite REMOVER para confirmar.")
+                    else:
+                        ok, resposta = desativar_servico_manutencao_online(
+                            servico_remocao.get("id")
+                        )
+
+                        if ok:
+                            st.success("Serviço removido do plano.")
+                            st.rerun()
+                        else:
+                            st.error("Não foi possível remover o serviço.")
+                            st.write(resposta)
+
+    # -------------------------------------------------------------------------
+    # HISTÓRICO
+    # -------------------------------------------------------------------------
+    with tab4:
         st.subheader("Histórico de manutenções")
 
         historico_manutencoes, erro_historico = listar_manutencoes_online(
