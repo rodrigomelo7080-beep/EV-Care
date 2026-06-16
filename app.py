@@ -761,6 +761,56 @@ def mostrar_estado_vazio(titulo, mensagem):
         st.write(f"### {titulo}")
         st.info(mensagem)
 
+def mostrar_onboarding_beta():
+    """
+    Mostra uma orientação inicial para usuários novos no EV Care.
+    """
+    st.markdown("## Bem-vindo ao EV Care ⚡")
+
+    st.write(
+        "O EV Care ajuda você a acompanhar recargas, quilometragem, custos, "
+        "manutenções e relatórios do seu veículo elétrico em um só lugar."
+    )
+
+    st.divider()
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("### 1. Cadastre seu veículo")
+        st.write(
+            "Comece adicionando seu carro em **Minha Garagem**. "
+            "O veículo será usado nas páginas de recargas, quilometragem, "
+            "manutenções, custos e relatórios."
+        )
+
+    with col2:
+        st.markdown("### 2. Registre seu uso")
+        st.write(
+            "Atualize a quilometragem, registre recargas e lance manutenções "
+            "para gerar indicadores reais de custo, consumo e alertas."
+        )
+
+    with col3:
+        st.markdown("### 3. Acompanhe os resultados")
+        st.write(
+            "Use o Dashboard, Histórico, Custos e relatórios Plus para acompanhar "
+            "a evolução do veículo ao longo do tempo."
+        )
+
+    st.divider()
+
+    st.info(
+        "Este é um Beta público. Algumas funcionalidades podem evoluir conforme "
+        "testes, feedbacks e melhorias do produto."
+    )
+
+    st.success(
+        "Fluxo recomendado: Minha Garagem → Quilometragem → Recargas → "
+        "Manutenções → Dashboard."
+    )
+
+
 
 
 
@@ -854,39 +904,61 @@ if pagina == "Dashboard":
         "Resumo geral do veículo, recargas, custos e manutenções."
     )
 
-    if not validar_contexto_online("Dashboard"):
+    if not st.session_state.get("auth_logado", False):
+        mostrar_onboarding_beta()
+        st.warning("Faça login na página **Conta** para começar.")
         st.stop()
-    else:
-        veiculo_ativo = obter_veiculo_ativo()
 
-        garantir_plano_manutencao_expandido(veiculo_ativo)
+    carregar_veiculo_online_ativo_para_app()
 
-        
-        st.caption(
-            "Garagem, quilometragem e recargas já estão sendo carregadas do banco online."
+    veiculo_ativo = obter_veiculo_ativo()
+
+    if not veiculo_ativo:
+        mostrar_onboarding_beta()
+
+        st.warning(
+            "Nenhum veículo cadastrado ainda. Acesse **Minha Garagem** "
+            "para cadastrar seu primeiro veículo."
         )
 
-        st.divider()
+        st.stop()
 
-        resumo_recargas, erro_resumo_dashboard = obter_resumo_recargas_online(
-            veiculo_id=veiculo_ativo.id_online,
-            km_atual_veiculo=veiculo_ativo.km_atual
+    if getattr(veiculo_ativo, "origem_dados", None) != "supabase":
+        st.warning(
+            "Acesse **Minha Garagem** para selecionar um veículo cadastrado na sua conta."
         )
+        st.stop()
 
-        if erro_resumo_dashboard:
-            st.error("Erro ao carregar resumo online de recargas.")
-            st.write(erro_resumo_dashboard)
+    if not getattr(veiculo_ativo, "id_online", None):
+        st.warning(
+            "Não foi possível identificar o veículo ativo. Acesse **Minha Garagem** "
+            "e selecione um veículo."
+        )
+        st.stop()
 
-            resumo_recargas = {
-                "total_recargas": 0,
-                "energia_total": 0,
-                "custo_total": 0,
-                "custo_medio_recarga": 0,
-                "preco_medio_kwh": 0,
-                "custo_real_km": None,
-                "consumo_real_km_kwh": None,
-                "km_rodados": 0
-            }
+    garantir_plano_manutencao_expandido(veiculo_ativo)
+
+    st.divider()
+
+    resumo_recargas, erro_resumo_dashboard = obter_resumo_recargas_online(
+        veiculo_id=veiculo_ativo.id_online,
+        km_atual_veiculo=veiculo_ativo.km_atual
+    )
+
+    if erro_resumo_dashboard:
+        st.error("Erro ao carregar resumo online de recargas.")
+        st.write(erro_resumo_dashboard)
+
+        resumo_recargas = {
+            "total_recargas": 0,
+            "energia_total": 0,
+            "custo_total": 0,
+            "custo_medio_recarga": 0,
+            "preco_medio_kwh": 0,
+            "custo_real_km": None,
+            "consumo_real_km_kwh": None,
+            "km_rodados": 0
+        }
 
         recargas_online, erro_recargas_dashboard = listar_recargas_online(
             veiculo_ativo.id_online
@@ -2694,9 +2766,6 @@ elif pagina == "Histórico":
         st.subheader("Histórico de manutenções")
 
 
-
-# VIAGENS
-
 # =============================================================================
 # PLANOS
 # =============================================================================
@@ -2707,97 +2776,57 @@ elif pagina == "Planos":
         "Escolha o plano ideal para acompanhar seu veículo elétrico."
     )
 
-    st.write(
-        "O EV Care está em fase Beta e atualmente pode ser usado gratuitamente. "
-        "No futuro, o aplicativo poderá contar com recursos avançados no plano Plus."
-    )
+    exibir_resumo_plano()
 
     st.divider()
 
     col_free, col_plus = st.columns(2)
 
     with col_free:
-        st.subheader("EV Care Free")
-        st.caption("Disponível agora")
+        with st.container(border=True):
+            st.subheader("EV Care Free")
+            st.caption("Para começar a acompanhar seu veículo")
 
-        st.markdown(
-            """
-            Ideal para quem quer começar a controlar seu veículo elétrico.
+            st.markdown(
+                """
+                Inclui:
 
-            Inclui:
+                - 1 veículo cadastrado
+                - Quilometragem online
+                - Recargas online
+                - Manutenções online
+                - Dashboard básico
+                - Histórico básico
+                - Custos e economia
+                """
+            )
 
-            - Cadastro de 1 veículo
-            - Registro de recargas
-            - Atualização de quilometragem
-            - Dashboard básico
-            - Controle de manutenções
-            - Simulação de viagens
-            - Custos e economia
-            - Histórico básico
-            """
-        )
-
-        st.success("Plano atual: gratuito durante o Beta")
+            st.success("Disponível no Beta")
 
     with col_plus:
-        st.subheader("EV Care Plus")
-        st.caption("Em breve")
+        with st.container(border=True):
+            st.subheader("EV Care Plus")
+            st.caption("Para quem quer relatórios e exportações")
 
-        st.markdown(
-            """
-            Pensado para usuários que desejam mais controle, relatórios e automação.
+            st.markdown(
+                """
+                Inclui tudo do Free, mais:
 
-            Recursos planejados:
+                - Veículos ilimitados
+                - Exportação CSV de recargas
+                - Exportação CSV de manutenções
+                - Exportação CSV de quilometragem
+                - Relatório PDF do veículo
+                - Relatório mensal
+                - Recursos avançados em evolução
+                """
+            )
 
-            - Veículos ilimitados
-            - Backup em nuvem
-            - Sincronização entre dispositivos
-            - Relatórios mensais
-            - Exportação em PDF ou Excel
-            - Alertas inteligentes de manutenção
-            - Gráficos avançados de consumo
-            - Comparações mensais de economia
-            - Histórico completo avançado
-            """
-        )
+            st.info("Disponível para testes controlados")
 
-        st.info("Recurso planejado para uma próxima fase")
-
-    st.divider()
-
-    st.subheader("Por que existirão planos pagos?")
-
-    st.write(
-        "A proposta do EV Care é manter uma versão gratuita útil para o usuário comum "
-        "e oferecer recursos avançados para quem deseja análises mais completas, "
-        "relatórios, backup em nuvem e automações."
-    )
-
-    st.warning(
-        "Durante a fase Beta, os recursos podem mudar conforme testes, feedbacks e evolução do produto."
-    )
-
-    st.divider()
-
-    st.subheader("Próxima fase planejada")
-
-    st.markdown(
-        """
-        A próxima grande evolução técnica será a implementação de:
-
-        - Login de usuários
-        - Banco de dados online
-        - Dados separados por conta
-        - Base para plano Free e Plus
-        """
-    )
     st.divider()
 
     st.subheader("Recursos Plus")
-
-    st.write(
-        "Estes recursos fazem parte da evolução planejada do EV Care Plus."
-    )
 
     recursos_plus = obter_recursos_plus()
 
@@ -2807,21 +2836,16 @@ elif pagina == "Planos":
 
             if recurso_disponivel(codigo_recurso):
                 st.success("Disponível no seu plano.")
-                st.caption(
-                    "Este recurso está liberado para usuários Plus ativos. "
-                    "Algumas funcionalidades podem ser ativadas progressivamente."
-                )
             else:
                 st.warning(mensagem_recurso_plus(codigo_recurso))
 
-                if st.session_state.get("auth_logado", False):
-                    st.caption(
-                        "Seu plano atual ainda não libera este recurso."
-                    )
-                else:
-                    st.caption(
-                        "Faça login para verificar seu plano."
-                    )
+    st.divider()
+
+    st.info(
+        "Durante o Beta, os planos e recursos podem evoluir com base nos testes "
+        "e feedbacks dos usuários."
+    )
+
 
 # =============================================================================
 # FEEDBACK
@@ -2832,105 +2856,78 @@ elif pagina == "Feedback":
         "Feedback do EV Care",
         "Envie sugestões e ajude a melhorar o aplicativo."
     )
+
     st.write(
-        "O EV Care está em fase Beta. Seu feedback ajuda a melhorar o aplicativo "
-        "e a definir quais recursos devem ser priorizados nas próximas versões."
+        "O EV Care está em fase Beta. Seu feedback ajuda a identificar problemas, "
+        "priorizar melhorias e validar quais recursos são mais úteis."
     )
 
     st.divider()
 
-    st.subheader("O que você pode enviar?")
+    st.subheader("O que você pode avaliar?")
 
     st.markdown(
         """
-        - Sugestões de novas funcionalidades
-        - Problemas encontrados durante o uso
-        - Dificuldades em alguma tela
-        - Ideias para melhorar recargas, manutenções ou custos
-        - Interesse no futuro plano EV Care Plus
+        - Facilidade para cadastrar veículo
+        - Registro de quilometragem
+        - Registro e edição de recargas
+        - Controle de manutenções
+        - Clareza do Dashboard
+        - Página de Custos e Economia
+        - Exportações e relatórios Plus
+        - Sugestões de novos recursos
         """
     )
-
-    st.divider()
-
-    st.subheader("Interesse no EV Care Plus")
-
-    interesse_plus = st.multiselect(
-        "Quais recursos premium você considera mais úteis?",
-        [
-            "Veículos ilimitados",
-            "Backup em nuvem",
-            "Relatórios mensais",
-            "Exportação em PDF",
-            "Exportação em Excel",
-            "Alertas inteligentes de manutenção",
-            "Gráficos avançados de consumo",
-            "Comparação mensal de economia",
-            "Histórico avançado",
-            "Sincronização entre dispositivos"
-        ]
-    )
-
-    if interesse_plus:
-        st.success("Obrigado! Esses interesses ajudam a priorizar o EV Care Plus.")
-        st.write("Recursos selecionados:")
-        for item in interesse_plus:
-            st.write(f"- {item}")
 
     st.divider()
 
     st.subheader("Modelo de feedback")
 
-    st.info(
-        "Nesta versão Beta, o envio automático ainda será estruturado. "
-        "Por enquanto, use este modelo para coletar opiniões e relatos de teste."
-    )
-
     st.markdown(
         """
-        **Modelo sugerido:**
+        Copie este modelo e envie pelo canal de contato definido para os testes:
 
         - Nome:
+        - E-mail:
         - Modelo do veículo:
-        - Página onde ocorreu o problema:
+        - Página testada:
         - O que você tentou fazer:
         - O que aconteceu:
         - O que você esperava:
+        - O que ficou confuso:
         - Sugestão de melhoria:
         - Você teria interesse no EV Care Plus? Sim/Não
         """
     )
 
     st.warning(
-        "Não envie senhas, documentos pessoais, dados bancários ou informações sensíveis nesta fase Beta."
+        "Não envie senhas, documentos, dados bancários ou informações sensíveis."
     )
 
-    # =============================================================================
+
+# =============================================================================
 # CONTA
 # =============================================================================
 
-elif pagina == "Conta":
-    mostrar_cabecalho_pagina(
-        "Conta",
-        "Acesse sua conta, plano e informações de assinatura."
+if st.session_state.auth_logado:
+    st.success("Conta conectada")
+
+    st.write(f"**E-mail:** {st.session_state.auth_email}")
+    st.write(f"**Nome:** {st.session_state.auth_nome}")
+    st.write(f"**Plano atual:** {st.session_state.auth_plano}")
+    st.write(
+        f"**Status da assinatura:** "
+        f"{st.session_state.get('auth_status_assinatura', 'inactive')}"
     )
 
-    if st.session_state.auth_logado:
-        st.success("Usuário logado")
+    st.info(
+        "Sua conta está ativa. Os dados do veículo são vinculados ao seu login."
+    )
 
-        st.write(f"**E-mail:** {st.session_state.auth_email}")
-        st.write(f"**Nome:** {st.session_state.auth_nome}")
-        st.write(f"**Plano atual:** {st.session_state.auth_plano}")
-        st.write(f"**Status da assinatura:** {st.session_state.get('auth_status_assinatura', 'inactive')}")
-
-        st.info(
-            "Sua conta está ativa. Os dados do veículo são vinculados ao seu login."
-        )
-
-        if st.button("Sair da conta"):
-            sair_usuario()
-            st.success("Você saiu da conta.")
-            st.rerun()
+    if st.button("Sair da conta"):
+        sair_usuario()
+        st.success("Você saiu da conta.")
+        st.rerun()
 
     else:
         tab_login, tab_cadastro = st.tabs(["Entrar", "Criar conta"])
