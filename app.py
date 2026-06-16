@@ -549,38 +549,44 @@ def gerar_pdf_resumo_veiculo(veiculo, resumo_recargas, resumo_manutencao):
     elementos.append(tabela_manutencao)
     elementos.append(Spacer(1, 0.7 * cm))
 
-    itens_status = resumo_manutencao.get("itens_status", [])
+    def adicionar_tabela_manutencoes_pdf(titulo_secao, itens):
+        """
+        Adiciona ao PDF uma tabela com manutenções vencidas ou próximas.
+        """
+        if not itens:
+            return
 
-    if itens_status:
-        elementos.append(Paragraph("Próximas manutenções relevantes", subtitulo))
+        elementos.append(Paragraph(titulo_secao, subtitulo))
 
-        dados_itens = [
-            ["Serviço", "Status", "Próxima KM", "Restante"]
+        dados_tabela = [
+            ["Serviço", "Status", "Última KM", "Próxima KM", "Situação"]
         ]
 
-        for servico, dados in itens_status[:6]:
+        for servico, dados in itens:
             km_restante = dados.get("km_restante", 0)
 
             if km_restante >= 0:
-                restante_txt = f"{km_restante} km"
+                situacao_txt = f"Faltam {km_restante} km"
             else:
-                restante_txt = f"Vencida há {abs(km_restante)} km"
+                situacao_txt = f"Vencida há {abs(km_restante)} km"
 
-            dados_itens.append(
+            dados_tabela.append(
                 [
-                    escape(str(servico.get("nome", "Não informado"))),
-                    escape(str(dados.get("status", "Não informado"))),
+                    Paragraph(escape(str(servico.get("nome", "Não informado"))), normal),
+                    Paragraph(escape(str(dados.get("status", "Não informado"))), normal),
+                    f"{dados.get('ultima_km', 0)} km",
                     f"{dados.get('proxima_km', 0)} km",
-                    restante_txt
+                    Paragraph(escape(situacao_txt), normal)
                 ]
             )
 
-        tabela_itens = Table(
-            dados_itens,
-            colWidths=[6 * cm, 3 * cm, 3 * cm, 4 * cm]
+        tabela = Table(
+            dados_tabela,
+            colWidths=[5.2 * cm, 2.6 * cm, 2.6 * cm, 2.8 * cm, 3.8 * cm],
+            repeatRows=1
         )
 
-        tabela_itens.setStyle(
+        tabela.setStyle(
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
@@ -591,7 +597,31 @@ def gerar_pdf_resumo_veiculo(veiculo, resumo_recargas, resumo_manutencao):
             )
         )
 
-        elementos.append(tabela_itens)
+        elementos.append(tabela)
+        elementos.append(Spacer(1, 0.5 * cm))
+
+
+    manuntencoes_vencidas_pdf = resumo_manutencao.get("vencidos", [])
+    manutencoes_proximas_pdf = resumo_manutencao.get("proximos", [])
+
+    if manuntencoes_vencidas_pdf or manutencoes_proximas_pdf:
+        adicionar_tabela_manutencoes_pdf(
+            "Manutenções vencidas",
+            manuntencoes_vencidas_pdf
+        )
+
+        adicionar_tabela_manutencoes_pdf(
+            "Manutenções próximas de vencer",
+            manutencoes_proximas_pdf
+        )
+    else:
+        elementos.append(Paragraph("Alertas de manutenção", subtitulo))
+        elementos.append(
+            Paragraph(
+                "Nenhuma manutenção vencida ou próxima de vencer no momento.",
+                normal
+            )
+        )
 
     elementos.append(Spacer(1, 0.7 * cm))
     elementos.append(
