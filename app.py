@@ -960,476 +960,475 @@ if pagina == "Dashboard":
             "km_rodados": 0
         }
 
-        recargas_online, erro_recargas_dashboard = listar_recargas_online(
-            veiculo_ativo.id_online
+    recargas_online, erro_recargas_dashboard = listar_recargas_online(
+        veiculo_ativo.id_online
+    )
+
+    if erro_recargas_dashboard:
+        st.error("Erro ao carregar última recarga online.")
+        st.write(erro_recargas_dashboard)
+        recargas_online = []
+
+    ultima_recarga = recargas_online[0] if recargas_online else None
+
+    autonomia = veiculo_ativo.calcular_autonomia()
+    saude_bateria = veiculo_ativo.calcular_saude_bateria()
+
+    # ---------------------------------------------------------------------
+    # CABEÇALHO DO VEÍCULO
+    # ---------------------------------------------------------------------
+    st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric(
+            "KM atual",
+            f"{veiculo_ativo.km_atual:,} km".replace(",", ".")
         )
 
-        if erro_recargas_dashboard:
-            st.error("Erro ao carregar última recarga online.")
-            st.write(erro_recargas_dashboard)
-            recargas_online = []
+    with col2:
+        st.metric(
+            "Autonomia estimada",
+            f"{autonomia:.0f} km"
+        )
 
-        ultima_recarga = recargas_online[0] if recargas_online else None
+    with col3:
+        st.metric(
+            "Saúde estimada da bateria",
+            f"{saude_bateria:.2f}%"
+        )
 
-        autonomia = veiculo_ativo.calcular_autonomia()
-        saude_bateria = veiculo_ativo.calcular_saude_bateria()
+    with col4:
+        st.metric(
+            "Recargas registradas",
+            resumo_recargas["total_recargas"]
+        )
 
-        # ---------------------------------------------------------------------
-        # CABEÇALHO DO VEÍCULO
-        # ---------------------------------------------------------------------
-        st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
+    st.progress(min(max(saude_bateria / 100, 0), 1))
 
-        col1, col2, col3, col4 = st.columns(4)
+    st.divider()
 
-        with col1:
+    # ---------------------------------------------------------------------
+    # CUSTOS E EFICIÊNCIA
+    # ---------------------------------------------------------------------
+    st.subheader("Custos e eficiência")
+
+    col_custo1, col_custo2, col_custo3, col_custo4 = st.columns(4)
+
+    with col_custo1:
+        st.metric(
+            "Gasto total em recargas",
+            f"R$ {resumo_recargas['custo_total']:.2f}"
+        )
+
+    with col_custo2:
+        st.metric(
+            "Energia total carregada",
+            f"{resumo_recargas['energia_total']:.2f} kWh"
+        )
+
+    with col_custo3:
+        if resumo_recargas["custo_real_km"] is not None:
             st.metric(
-                "KM atual",
-                f"{veiculo_ativo.km_atual:,} km".replace(",", ".")
+                "Custo real por km",
+                f"R$ {resumo_recargas['custo_real_km']:.4f}"
             )
-
-        with col2:
-            st.metric(
-                "Autonomia estimada",
-                f"{autonomia:.0f} km"
-            )
-
-        with col3:
-            st.metric(
-                "Saúde estimada da bateria",
-                f"{saude_bateria:.2f}%"
-            )
-
-        with col4:
-            st.metric(
-                "Recargas registradas",
-                resumo_recargas["total_recargas"]
-            )
-
-        st.progress(min(max(saude_bateria / 100, 0), 1))
-
-        st.divider()
-
-        # ---------------------------------------------------------------------
-        # CUSTOS E EFICIÊNCIA
-        # ---------------------------------------------------------------------
-        st.subheader("Custos e eficiência")
-
-        col_custo1, col_custo2, col_custo3, col_custo4 = st.columns(4)
-
-        with col_custo1:
-            st.metric(
-                "Gasto total em recargas",
-                f"R$ {resumo_recargas['custo_total']:.2f}"
-            )
-
-        with col_custo2:
-            st.metric(
-                "Energia total carregada",
-                f"{resumo_recargas['energia_total']:.2f} kWh"
-            )
-
-        with col_custo3:
-            if resumo_recargas["custo_real_km"] is not None:
-                st.metric(
-                    "Custo real por km",
-                    f"R$ {resumo_recargas['custo_real_km']:.4f}"
-                )
-            else:
-                st.metric(
-                    "Custo real por km",
-                    "Indisponível"
-                )
-
-        with col_custo4:
-            if resumo_recargas["consumo_real_km_kwh"] is not None:
-                st.metric(
-                    "Consumo real",
-                    f"{resumo_recargas['consumo_real_km_kwh']:.2f} km/kWh"
-                )
-            else:
-                st.metric(
-                    "Consumo real",
-                    "Indisponível"
-                )
-
-        if resumo_recargas["custo_real_km"] is None:
-            st.info(
-                "Para calcular custo real por km, registre uma recarga, use o veículo "
-                "e depois atualize a quilometragem."
-            )
-
-        st.divider()
-
-        # ---------------------------------------------------------------------
-        # ÚLTIMA RECARGA ONLINE
-        # ---------------------------------------------------------------------
-        st.subheader("Última recarga")
-
-        if ultima_recarga:
-            col_r1, col_r2, col_r3, col_r4 = st.columns(4)
-
-            with col_r1:
-                st.write("**Data**")
-                st.write(ultima_recarga.get("data_recarga", "Não informada"))
-
-            with col_r2:
-                st.write("**Local**")
-                st.write(ultima_recarga.get("local", "Não informado"))
-
-            with col_r3:
-                st.write("**Energia**")
-                st.write(f"{float(ultima_recarga.get('energia_kwh') or 0):.2f} kWh")
-
-            with col_r4:
-                st.write("**Custo**")
-                st.write(f"R$ {float(ultima_recarga.get('custo_total') or 0):.2f}")
-
-            st.write(
-                f"**Bateria:** "
-                f"{float(ultima_recarga.get('bateria_inicial') or 0):.1f}% → "
-                f"{float(ultima_recarga.get('bateria_final') or 0):.1f}%"
-            )
-
-            st.write(f"**Tipo:** {ultima_recarga.get('tipo', 'Não informado')}")
-            st.write(f"**KM no momento da recarga:** {ultima_recarga.get('km_atual', 0)} km")
-
-            if ultima_recarga.get("observacao"):
-                st.write(f"**Observação:** {ultima_recarga.get('observacao')}")
         else:
-            st.info("Nenhuma recarga online registrada ainda.")
+            st.metric(
+                "Custo real por km",
+                "Indisponível"
+            )
 
-        st.divider()
+    with col_custo4:
+        if resumo_recargas["consumo_real_km_kwh"] is not None:
+            st.metric(
+                "Consumo real",
+                f"{resumo_recargas['consumo_real_km_kwh']:.2f} km/kWh"
+            )
+        else:
+            st.metric(
+                "Consumo real",
+                "Indisponível"
+            )
 
-        # ---------------------------------------------------------------------
-        # MANUTENÇÕES E ALERTAS
-        # ---------------------------------------------------------------------
-        st.subheader("Manutenções e alertas")
+    if resumo_recargas["custo_real_km"] is None:
+        st.info(
+            "Para calcular custo real por km, registre uma recarga, use o veículo "
+            "e depois atualize a quilometragem."
+        )
 
-        resumo_manutencao_dashboard, erro_manutencao_dashboard = obter_resumo_manutencoes_online(
+    st.divider()
+
+    # ---------------------------------------------------------------------
+    # ÚLTIMA RECARGA ONLINE
+    # ---------------------------------------------------------------------
+    st.subheader("Última recarga")
+
+    if ultima_recarga:
+        col_r1, col_r2, col_r3, col_r4 = st.columns(4)
+
+        with col_r1:
+            st.write("**Data**")
+            st.write(ultima_recarga.get("data_recarga", "Não informada"))
+
+        with col_r2:
+            st.write("**Local**")
+            st.write(ultima_recarga.get("local", "Não informado"))
+
+        with col_r3:
+            st.write("**Energia**")
+            st.write(f"{float(ultima_recarga.get('energia_kwh') or 0):.2f} kWh")
+
+        with col_r4:
+            st.write("**Custo**")
+            st.write(f"R$ {float(ultima_recarga.get('custo_total') or 0):.2f}")
+
+        st.write(
+            f"**Bateria:** "
+            f"{float(ultima_recarga.get('bateria_inicial') or 0):.1f}% → "
+            f"{float(ultima_recarga.get('bateria_final') or 0):.1f}%"
+        )
+
+        st.write(f"**Tipo:** {ultima_recarga.get('tipo', 'Não informado')}")
+        st.write(f"**KM no momento da recarga:** {ultima_recarga.get('km_atual', 0)} km")
+
+        if ultima_recarga.get("observacao"):
+            st.write(f"**Observação:** {ultima_recarga.get('observacao')}")
+    else:
+        st.info("Nenhuma recarga online registrada ainda.")
+
+    st.divider()
+
+    # ---------------------------------------------------------------------
+    # MANUTENÇÕES E ALERTAS
+    # ---------------------------------------------------------------------
+    st.subheader("Manutenções e alertas")
+
+    resumo_manutencao_dashboard, erro_manutencao_dashboard = obter_resumo_manutencoes_online(
+        veiculo_id=veiculo_ativo.id_online,
+        km_atual=veiculo_ativo.km_atual
+    )
+
+    if erro_manutencao_dashboard:
+        st.error("Erro ao carregar resumo de manutenções.")
+        st.write(erro_manutencao_dashboard)
+
+        resumo_manutencao_dashboard = {
+            "itens_status": [],
+            "vencidos": [],
+            "proximos": [],
+            "em_dia": [],
+            "total_servicos": 0
+        }
+
+    itens_manutencao = resumo_manutencao_dashboard.get("itens_status", [])
+    vencidos = resumo_manutencao_dashboard.get("vencidos", [])
+    proximos = resumo_manutencao_dashboard.get("proximos", [])
+    em_dia = resumo_manutencao_dashboard.get("em_dia", [])
+
+    col_m1, col_m2, col_m3 = st.columns(3)
+
+    with col_m1:
+        st.metric("Vencidas", len(vencidos))
+
+    with col_m2:
+        st.metric("Próximas", len(proximos))
+
+    with col_m3:
+        st.metric("Em dia", len(em_dia))
+
+    if vencidos:
+        st.error("Existem manutenções vencidas.")
+    elif proximos:
+        st.warning("Existem manutenções próximas.")
+    elif itens_manutencao:
+        st.success("Todas as manutenções estão em dia.")
+    else:
+        st.info("Nenhum serviço de manutenção cadastrado.")
+
+    # ---------------------------------------------------------------------
+    # PRÓXIMA MANUTENÇÃO MAIS IMPORTANTE
+    # ---------------------------------------------------------------------
+    st.write("### Próxima manutenção relevante")
+
+    if itens_manutencao:
+        servico_mais_relevante, dados_mais_relevante = itens_manutencao[0]
+
+        with st.container(border=True):
+            col_p1, col_p2, col_p3 = st.columns(3)
+
+            with col_p1:
+                st.write("**Serviço**")
+                st.write(servico_mais_relevante.get("nome", "Não informado"))
+
+            with col_p2:
+                st.write("**Status**")
+                st.write(dados_mais_relevante.get("status", "Não informado"))
+
+            with col_p3:
+                st.write("**Próxima em**")
+                st.write(f"{dados_mais_relevante.get('proxima_km', 0)} km")
+
+            st.write(f"**Categoria:** {dados_mais_relevante.get('categoria', 'Geral')}")
+            st.write(f"**Criticidade:** {dados_mais_relevante.get('criticidade', 'Média')}")
+
+            km_restante = dados_mais_relevante.get("km_restante", 0)
+
+            if km_restante >= 0:
+                st.write(f"Faltam **{km_restante} km**")
+            else:
+                st.write(f"Vencida há **{abs(km_restante)} km**")
+
+            if dados_mais_relevante.get("descricao"):
+                st.caption(dados_mais_relevante.get("descricao"))
+    else:
+        st.info("Nenhum item de manutenção cadastrado no plano.")
+
+    st.divider()
+
+    # ---------------------------------------------------------------------
+    # LISTA RESUMIDA DE ALERTAS
+    # ---------------------------------------------------------------------
+    st.subheader("Resumo dos principais alertas")
+
+    if vencidos or proximos:
+        for servico, dados in itens_manutencao[:5]:
+            nome_servico = servico.get("nome", "Serviço não informado")
+            status_servico = dados.get("status", "Não informado")
+            km_restante = dados.get("km_restante", 0)
+            proxima_km = dados.get("proxima_km", 0)
+
+            if status_servico == "Vencido":
+                st.error(
+                    f"{nome_servico}: vencida há {abs(km_restante)} km "
+                    f"(próxima era em {proxima_km} km)."
+                )
+            elif status_servico == "Próximo":
+                st.warning(
+                    f"{nome_servico}: próxima em {proxima_km} km "
+                    f"(faltam {km_restante} km)."
+                )
+    elif itens_manutencao:
+        st.success("Nenhum alerta crítico no momento.")
+    else:
+        st.info("Nenhum serviço de manutenção cadastrado.")
+
+    # ---------------------------------------------------------------------
+    # AÇÕES RÁPIDAS
+    # ---------------------------------------------------------------------
+    st.subheader("Ações rápidas recomendadas")
+
+    col_a1, col_a2, col_a3 = st.columns(3)
+
+    with col_a1:
+        st.info("Para registrar uma nova recarga, acesse **Recargas**.")
+
+    with col_a2:
+        st.info("Para atualizar a KM, acesse **Quilometragem**.")
+
+    with col_a3:
+        st.info("Para lançar serviços realizados, acesse **Manutenções**.")
+
+    st.caption(
+        "Este dashboard usa os dados salvos da garagem, recargas, quilometragem "
+        "e plano de manutenção do veículo ativo."
+    )
+    st.subheader("Orientações rápidas")
+
+    if not recargas_online:
+        st.info(
+            "Registre sua primeira recarga em **Recargas** para calcular gasto total, "
+            "preço médio do kWh, custo real por km e consumo real."
+        )
+
+    if resumo_recargas["custo_real_km"] is None and recargas_online:
+        st.info(
+            "Para melhorar o cálculo de custo real por km, registre recargas "
+            "e mantenha a quilometragem atualizada."
+        )
+
+    if resumo_recargas["consumo_real_km_kwh"] is None and recargas_online:
+        st.info(
+            "O consumo real será calculado com mais precisão conforme você registrar "
+            "recargas e atualizar a quilometragem."
+        )
+    st.divider()
+
+    st.caption(
+        "Este dashboard usa os dados salvos da garagem, recargas, quilometragem "
+        "e plano de manutenção do veículo ativo."
+    )
+
+    st.divider()
+
+    st.subheader("Relatório do veículo")
+
+    if recurso_disponivel("exportacao_pdf"):
+        resumo_manutencao_pdf, erro_manutencao_pdf = obter_resumo_manutencoes_online(
             veiculo_id=veiculo_ativo.id_online,
             km_atual=veiculo_ativo.km_atual
         )
 
-        if erro_manutencao_dashboard:
-            st.error("Erro ao carregar resumo de manutenções.")
-            st.write(erro_manutencao_dashboard)
-
-            resumo_manutencao_dashboard = {
-                "itens_status": [],
-                "vencidos": [],
-                "proximos": [],
-                "em_dia": [],
-                "total_servicos": 0
-            }
-
-        itens_manutencao = resumo_manutencao_dashboard.get("itens_status", [])
-        vencidos = resumo_manutencao_dashboard.get("vencidos", [])
-        proximos = resumo_manutencao_dashboard.get("proximos", [])
-        em_dia = resumo_manutencao_dashboard.get("em_dia", [])
-
-        col_m1, col_m2, col_m3 = st.columns(3)
-
-        with col_m1:
-            st.metric("Vencidas", len(vencidos))
-
-        with col_m2:
-            st.metric("Próximas", len(proximos))
-
-        with col_m3:
-            st.metric("Em dia", len(em_dia))
-
-        if vencidos:
-            st.error("Existem manutenções vencidas.")
-        elif proximos:
-            st.warning("Existem manutenções próximas.")
-        elif itens_manutencao:
-            st.success("Todas as manutenções estão em dia.")
+        if erro_manutencao_pdf:
+            st.error("Não foi possível carregar os dados de manutenção para o relatório.")
+            st.write(erro_manutencao_pdf)
         else:
-            st.info("Nenhum serviço de manutenção cadastrado.")
-
-        # ---------------------------------------------------------------------
-        # PRÓXIMA MANUTENÇÃO MAIS IMPORTANTE
-        # ---------------------------------------------------------------------
-        st.write("### Próxima manutenção relevante")
-
-        if itens_manutencao:
-            servico_mais_relevante, dados_mais_relevante = itens_manutencao[0]
-
-            with st.container(border=True):
-                col_p1, col_p2, col_p3 = st.columns(3)
-
-                with col_p1:
-                    st.write("**Serviço**")
-                    st.write(servico_mais_relevante.get("nome", "Não informado"))
-
-                with col_p2:
-                    st.write("**Status**")
-                    st.write(dados_mais_relevante.get("status", "Não informado"))
-
-                with col_p3:
-                    st.write("**Próxima em**")
-                    st.write(f"{dados_mais_relevante.get('proxima_km', 0)} km")
-
-                st.write(f"**Categoria:** {dados_mais_relevante.get('categoria', 'Geral')}")
-                st.write(f"**Criticidade:** {dados_mais_relevante.get('criticidade', 'Média')}")
-
-                km_restante = dados_mais_relevante.get("km_restante", 0)
-
-                if km_restante >= 0:
-                    st.write(f"Faltam **{km_restante} km**")
-                else:
-                    st.write(f"Vencida há **{abs(km_restante)} km**")
-
-                if dados_mais_relevante.get("descricao"):
-                    st.caption(dados_mais_relevante.get("descricao"))
-        else:
-            st.info("Nenhum item de manutenção cadastrado no plano.")
-
-        st.divider()
-
-        # ---------------------------------------------------------------------
-        # LISTA RESUMIDA DE ALERTAS
-        # ---------------------------------------------------------------------
-        st.subheader("Resumo dos principais alertas")
-
-        if vencidos or proximos:
-            for servico, dados in itens_manutencao[:5]:
-                nome_servico = servico.get("nome", "Serviço não informado")
-                status_servico = dados.get("status", "Não informado")
-                km_restante = dados.get("km_restante", 0)
-                proxima_km = dados.get("proxima_km", 0)
-
-                if status_servico == "Vencido":
-                    st.error(
-                        f"{nome_servico}: vencida há {abs(km_restante)} km "
-                        f"(próxima era em {proxima_km} km)."
-                    )
-                elif status_servico == "Próximo":
-                    st.warning(
-                        f"{nome_servico}: próxima em {proxima_km} km "
-                        f"(faltam {km_restante} km)."
-                    )
-        elif itens_manutencao:
-            st.success("Nenhum alerta crítico no momento.")
-        else:
-            st.info("Nenhum serviço de manutenção cadastrado.")
-
-        # ---------------------------------------------------------------------
-        # AÇÕES RÁPIDAS
-        # ---------------------------------------------------------------------
-        st.subheader("Ações rápidas recomendadas")
-
-        col_a1, col_a2, col_a3 = st.columns(3)
-
-        with col_a1:
-            st.info("Para registrar uma nova recarga, acesse **Recargas**.")
-
-        with col_a2:
-            st.info("Para atualizar a KM, acesse **Quilometragem**.")
-
-        with col_a3:
-            st.info("Para lançar serviços realizados, acesse **Manutenções**.")
-
-        st.caption(
-            "Este dashboard usa os dados salvos da garagem, recargas, quilometragem "
-            "e plano de manutenção do veículo ativo."
-        )
-        st.subheader("Orientações rápidas")
-
-        if not recargas_online:
-            st.info(
-                "Registre sua primeira recarga em **Recargas** para calcular gasto total, "
-                "preço médio do kWh, custo real por km e consumo real."
+            pdf_relatorio = gerar_pdf_resumo_veiculo(
+                veiculo=veiculo_ativo,
+                resumo_recargas=resumo_recargas,
+                resumo_manutencao=resumo_manutencao_pdf
             )
 
-        if resumo_recargas["custo_real_km"] is None and recargas_online:
-            st.info(
-                "Para melhorar o cálculo de custo real por km, registre recargas "
-                "e mantenha a quilometragem atualizada."
+            nome_arquivo_pdf = (
+                f"ev_care_relatorio_"
+                f"{veiculo_ativo.marca}_{veiculo_ativo.modelo}.pdf"
             )
 
-        if resumo_recargas["consumo_real_km_kwh"] is None and recargas_online:
-            st.info(
-                "O consumo real será calculado com mais precisão conforme você registrar "
-                "recargas e atualizar a quilometragem."
-            )
-        st.divider()
+            nome_arquivo_pdf = nome_arquivo_pdf.replace(" ", "_").lower()
 
-        st.caption(
-            "Este dashboard usa os dados salvos da garagem, recargas, quilometragem "
-            "e plano de manutenção do veículo ativo."
+            st.download_button(
+                label="Baixar relatório PDF",
+                data=pdf_relatorio,
+                file_name=nome_arquivo_pdf,
+                mime="application/pdf"
+            )
+
+            st.caption(
+                "O relatório PDF reúne dados do veículo, recargas e manutenções."
+            )
+    else:
+        exibir_bloqueio_plus("exportacao_pdf")
+
+    
+    st.divider()
+
+    st.subheader("Relatório mensal")
+
+    if recurso_disponivel("relatorios_mensais"):
+        meses = {
+            1: "Janeiro",
+            2: "Fevereiro",
+            3: "Março",
+            4: "Abril",
+            5: "Maio",
+            6: "Junho",
+            7: "Julho",
+            8: "Agosto",
+            9: "Setembro",
+            10: "Outubro",
+            11: "Novembro",
+            12: "Dezembro",
+        }
+
+        hoje = date.today()
+
+        col_mes, col_ano = st.columns(2)
+
+        with col_mes:
+            mes_relatorio = st.selectbox(
+                "Mês",
+                list(meses.keys()),
+                format_func=lambda m: meses[m],
+                index=hoje.month - 1
+            )
+
+        with col_ano:
+            ano_relatorio = st.number_input(
+                "Ano",
+                min_value=2020,
+                max_value=2100,
+                value=hoje.year,
+                step=1
+            )
+
+        resumo_mensal, erro_resumo_mensal = calcular_resumo_mensal_online(
+            veiculo_ativo,
+            int(ano_relatorio),
+            int(mes_relatorio)
         )
 
-        st.divider()
-
-        st.subheader("Relatório do veículo")
-
-        if recurso_disponivel("exportacao_pdf"):
-            resumo_manutencao_pdf, erro_manutencao_pdf = obter_resumo_manutencoes_online(
-                veiculo_id=veiculo_ativo.id_online,
-                km_atual=veiculo_ativo.km_atual
+        if erro_resumo_mensal:
+            st.error("Não foi possível gerar o relatório mensal.")
+            st.write(erro_resumo_mensal)
+        else:
+            st.write(
+                f"Resumo de **{meses[int(mes_relatorio)]}/{int(ano_relatorio)}**"
             )
 
-            if erro_manutencao_pdf:
-                st.error("Não foi possível carregar os dados de manutenção para o relatório.")
-                st.write(erro_manutencao_pdf)
+            col_rm1, col_rm2, col_rm3, col_rm4 = st.columns(4)
+
+            with col_rm1:
+                st.metric(
+                    "Recargas no mês",
+                    resumo_mensal["total_recargas"]
+                )
+
+            with col_rm2:
+                st.metric(
+                    "Energia carregada",
+                    f"{resumo_mensal['energia_total']:.2f} kWh"
+                )
+
+            with col_rm3:
+                st.metric(
+                    "Gasto no mês",
+                    f"R$ {resumo_mensal['custo_total']:.2f}"
+                )
+
+            with col_rm4:
+                st.metric(
+                    "Preço médio kWh",
+                    f"R$ {resumo_mensal['preco_medio_kwh']:.2f}"
+                )
+
+            col_rm5, col_rm6, col_rm7 = st.columns(3)
+
+            with col_rm5:
+                st.metric(
+                    "Registros de KM",
+                    resumo_mensal["total_registros_km"]
+                )
+
+            with col_rm6:
+                st.metric(
+                    "KM registrados no mês",
+                    f"{resumo_mensal['km_registrados_mes']} km"
+                )
+
+            with col_rm7:
+                st.metric(
+                    "Manutenções realizadas",
+                    resumo_mensal["total_manutencoes"]
+                )
+
+            if resumo_mensal["custo_por_km_mes"] is not None:
+                st.success(
+                    f"Custo aproximado por km no mês: "
+                    f"R$ {resumo_mensal['custo_por_km_mes']:.4f}"
+                )
             else:
-                pdf_relatorio = gerar_pdf_resumo_veiculo(
-                    veiculo=veiculo_ativo,
-                    resumo_recargas=resumo_recargas,
-                    resumo_manutencao=resumo_manutencao_pdf
+                st.info(
+                    "Para calcular custo por km no mês, registre recargas "
+                    "e atualizações de quilometragem no mesmo período."
                 )
 
-                nome_arquivo_pdf = (
-                    f"ev_care_relatorio_"
-                    f"{veiculo_ativo.marca}_{veiculo_ativo.modelo}.pdf"
+            if (
+                resumo_mensal["total_recargas"] == 0
+                and resumo_mensal["total_registros_km"] == 0
+                and resumo_mensal["total_manutencoes"] == 0
+            ):
+                st.info(
+                    "Nenhum dado encontrado para o mês selecionado."
                 )
-
-                nome_arquivo_pdf = nome_arquivo_pdf.replace(" ", "_").lower()
-
-                st.download_button(
-                    label="Baixar relatório PDF",
-                    data=pdf_relatorio,
-                    file_name=nome_arquivo_pdf,
-                    mime="application/pdf"
-                )
-
-                st.caption(
-                    "O relatório PDF reúne dados do veículo, recargas e manutenções."
-                )
-        else:
-            exibir_bloqueio_plus("exportacao_pdf")
-
-        
-        st.divider()
-
-        st.subheader("Relatório mensal")
-
-        if recurso_disponivel("relatorios_mensais"):
-            meses = {
-                1: "Janeiro",
-                2: "Fevereiro",
-                3: "Março",
-                4: "Abril",
-                5: "Maio",
-                6: "Junho",
-                7: "Julho",
-                8: "Agosto",
-                9: "Setembro",
-                10: "Outubro",
-                11: "Novembro",
-                12: "Dezembro",
-            }
-
-            hoje = date.today()
-
-            col_mes, col_ano = st.columns(2)
-
-            with col_mes:
-                mes_relatorio = st.selectbox(
-                    "Mês",
-                    list(meses.keys()),
-                    format_func=lambda m: meses[m],
-                    index=hoje.month - 1
-                )
-
-            with col_ano:
-                ano_relatorio = st.number_input(
-                    "Ano",
-                    min_value=2020,
-                    max_value=2100,
-                    value=hoje.year,
-                    step=1
-                )
-
-            resumo_mensal, erro_resumo_mensal = calcular_resumo_mensal_online(
-                veiculo_ativo,
-                int(ano_relatorio),
-                int(mes_relatorio)
-            )
-
-            if erro_resumo_mensal:
-                st.error("Não foi possível gerar o relatório mensal.")
-                st.write(erro_resumo_mensal)
-            else:
-                st.write(
-                    f"Resumo de **{meses[int(mes_relatorio)]}/{int(ano_relatorio)}**"
-                )
-
-                col_rm1, col_rm2, col_rm3, col_rm4 = st.columns(4)
-
-                with col_rm1:
-                    st.metric(
-                        "Recargas no mês",
-                        resumo_mensal["total_recargas"]
-                    )
-
-                with col_rm2:
-                    st.metric(
-                        "Energia carregada",
-                        f"{resumo_mensal['energia_total']:.2f} kWh"
-                    )
-
-                with col_rm3:
-                    st.metric(
-                        "Gasto no mês",
-                        f"R$ {resumo_mensal['custo_total']:.2f}"
-                    )
-
-                with col_rm4:
-                    st.metric(
-                        "Preço médio kWh",
-                        f"R$ {resumo_mensal['preco_medio_kwh']:.2f}"
-                    )
-
-                col_rm5, col_rm6, col_rm7 = st.columns(3)
-
-                with col_rm5:
-                    st.metric(
-                        "Registros de KM",
-                        resumo_mensal["total_registros_km"]
-                    )
-
-                with col_rm6:
-                    st.metric(
-                        "KM registrados no mês",
-                        f"{resumo_mensal['km_registrados_mes']} km"
-                    )
-
-                with col_rm7:
-                    st.metric(
-                        "Manutenções realizadas",
-                        resumo_mensal["total_manutencoes"]
-                    )
-
-                if resumo_mensal["custo_por_km_mes"] is not None:
-                    st.success(
-                        f"Custo aproximado por km no mês: "
-                        f"R$ {resumo_mensal['custo_por_km_mes']:.4f}"
-                    )
-                else:
-                    st.info(
-                        "Para calcular custo por km no mês, registre recargas "
-                        "e atualizações de quilometragem no mesmo período."
-                    )
-
-                if (
-                    resumo_mensal["total_recargas"] == 0
-                    and resumo_mensal["total_registros_km"] == 0
-                    and resumo_mensal["total_manutencoes"] == 0
-                ):
-                    st.info(
-                        "Nenhum dado encontrado para o mês selecionado."
-                    )
-        else:
-            exibir_bloqueio_plus("relatorios_mensais")
+    else:
+        exibir_bloqueio_plus("relatorios_mensais")
 
 
 
 # =============================================================================
 # QUILOMETRAGEM
 # =============================================================================
-
 elif pagina == "Quilometragem":
     mostrar_cabecalho_pagina(
         "Quilometragem",
