@@ -1826,8 +1826,7 @@ elif pagina == "Recargas":
 
     veiculo_ativo = obter_veiculo_ativo()
 
-    st.success("Modo online: as recargas serão salvas no Supabase.")
-
+    st.caption("Registre e acompanhe suas recargas, custos e histórico de carregamento.")
     st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
 
     tab1, tab2, tab3 = st.tabs(
@@ -3221,8 +3220,7 @@ elif pagina == "Conta":
         st.write(f"**Status da assinatura:** {st.session_state.get('auth_status_assinatura', 'inactive')}")
 
         st.info(
-            "Nesta fase, o login já está conectado ao Supabase. "
-            "Nas próximas etapas, garagem, recargas e manutenções serão migradas para o banco online."
+            "Sua conta está ativa. Os dados do veículo são vinculados ao seu login."
         )
 
         if st.button("Sair da conta"):
