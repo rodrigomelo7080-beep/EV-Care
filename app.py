@@ -341,6 +341,39 @@ def gerar_csv_recargas(recargas):
         )
 
     return saida.getvalue()
+
+def gerar_csv_manutencoes(manutencoes):
+    """
+    Gera um arquivo CSV em texto com o histórico de manutenções do veículo.
+    Usa separador ';' para facilitar abertura no Excel em PT-BR.
+    """
+    saida = io.StringIO()
+
+    # BOM UTF-8 para o Excel reconhecer acentos corretamente
+    saida.write("\ufeff")
+
+    escritor = csv.writer(saida, delimiter=";")
+
+    escritor.writerow(
+        [
+            "Data da manutenção",
+            "Serviço",
+            "KM realizada",
+            "Observação"
+        ]
+    )
+
+    for manutencao in manutencoes:
+        escritor.writerow(
+            [
+                manutencao.get("data_realizada", ""),
+                manutencao.get("nome_servico", ""),
+                manutencao.get("km_realizada", ""),
+                manutencao.get("observacao", "")
+            ]
+        )
+
+    return saida.getvalue()
     
 def calcular_progresso_inicial(garagem, veiculo_ativo):
     """
@@ -2011,6 +2044,44 @@ elif pagina == "Manutenções":
 
                     if registro.get("observacao"):
                         st.write(f"**Observação:** {registro.get('observacao')}")
+        
+        st.divider()
+
+        st.subheader("Exportação de manutenções")
+
+        if recurso_disponivel("exportacao_excel"):
+            historico_exportacao, erro_exportacao = listar_manutencoes_online(
+                veiculo_ativo.id_online
+            )
+
+            if erro_exportacao:
+                st.error("Não foi possível carregar as manutenções para exportação.")
+                st.write(erro_exportacao)
+            elif not historico_exportacao:
+                st.info("Ainda não há manutenções para exportar.")
+            else:
+                csv_manutencoes = gerar_csv_manutencoes(historico_exportacao)
+
+                nome_arquivo_csv = (
+                    f"ev_care_manutencoes_"
+                    f"{veiculo_ativo.marca}_{veiculo_ativo.modelo}.csv"
+                )
+
+                nome_arquivo_csv = nome_arquivo_csv.replace(" ", "_").lower()
+
+                st.download_button(
+                    label="Baixar manutenções em CSV",
+                    data=csv_manutencoes,
+                    file_name=nome_arquivo_csv,
+                    mime="text/csv"
+                )
+
+                st.caption(
+                    "O arquivo CSV pode ser aberto no Excel, Google Planilhas "
+                    "ou outros aplicativos de planilha."
+                )
+        else:
+            exibir_bloqueio_plus("exportacao_excel")
 
 
 
