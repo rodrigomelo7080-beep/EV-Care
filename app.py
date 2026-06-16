@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, date
 from xml.sax.saxutils import escape
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -635,6 +635,140 @@ def gerar_pdf_resumo_veiculo(veiculo, resumo_recargas, resumo_manutencao):
 
     buffer.seek(0)
     return buffer.getvalue()
+
+def converter_data_iso_para_datetime(valor):
+    """
+    Converte datas vindas do Supabase para datetime.
+    Aceita formatos ISO com ou sem timezone.
+    """
+    if not valor:
+        return None
+
+    texto = str(valor).strip()
+
+    try:
+        texto = texto.replace("Z", "+00:00")
+        return datetime.fromisoformat(texto)
+    except Exception:
+        pass
+
+    try:
+        return datetime.strptime(texto[:10], "%Y-%m-%d")
+    except Exception:
+        return None
+
+
+def filtrar_registros_por_mes(registros, campo_data, ano, mes):
+    """
+    Filtra registros pelo ano e mês informados.
+    """
+    filtrados = []
+
+    for registro in registros:
+        data_registro = converter_data_iso_para_datetime(
+            registro.get(campo_data)
+        )
+
+        if not data_registro:
+            continue
+
+        if data_registro.year == ano and data_registro.month == mes:
+            filtrados.append(registro)
+
+    return filtrados
+
+
+def calcular_resumo_mensal_online(veiculo, ano, mes):
+    """
+    Calcula um resumo mensal usando dados online:
+    recargas, quilometragem e manutenções.
+    """
+    recargas, erro_recargas = listar_recargas_online(veiculo.id_online)
+
+    if erro_recargas:
+        return None, erro_recargas
+
+    historico_km, erro_km = listar_historico_km_online(veiculo.id_online)
+
+    if erro_km:
+        return None, erro_km
+
+    manutencoes, erro_manutencoes = listar_manutencoes_online(
+        veiculo.id_online
+    )
+
+    if erro_manutencoes:
+        return None, erro_manutencoes
+
+    recargas_mes = filtrar_registros_por_mes(
+        recargas,
+        "data_recarga",
+        ano,
+        mes
+    )
+
+    km_mes = filtrar_registros_por_mes(
+        historico_km,
+        "data_registro",
+        ano,
+        mes
+    )
+
+    manutencoes_mes = filtrar_registros_por_mes(
+        manutencoes,
+        "data_realizada",
+        ano,
+        mes
+    )
+
+    energia_total = sum(
+        float(r.get("energia_kwh") or 0)
+        for r in recargas_mes
+    )
+
+    custo_total = sum(
+        float(r.get("custo_total") or 0)
+        for r in recargas_mes
+    )
+
+    preco_medio_kwh = (
+        custo_total / energia_total
+        if energia_total > 0
+        else 0
+    )
+
+    km_registrados_mes = 0
+
+    for registro in km_mes:
+        km_anterior = int(registro.get("km_anterior") or 0)
+        km_nova = int(registro.get("km_nova") or 0)
+
+        diferenca = km_nova - km_anterior
+
+        if diferenca > 0:
+            km_registrados_mes += diferenca
+
+    custo_por_km_mes = (
+        custo_total / km_registrados_mes
+        if km_registrados_mes > 0
+        else None
+    )
+
+    resumo = {
+        "recargas_mes": recargas_mes,
+        "km_mes": km_mes,
+        "manutencoes_mes": manutencoes_mes,
+        "total_recargas": len(recargas_mes),
+        "energia_total": energia_total,
+        "custo_total": custo_total,
+        "preco_medio_kwh": preco_medio_kwh,
+        "total_registros_km": len(km_mes),
+        "km_registrados_mes": km_registrados_mes,
+        "custo_por_km_mes": custo_por_km_mes,
+        "total_manutencoes": len(manutencoes_mes),
+    }
+
+    return resumo, None
 
     
 def calcular_progresso_inicial(garagem, veiculo_ativo):
@@ -1416,6 +1550,130 @@ if pagina == "Dashboard":
                 )
         else:
             exibir_bloqueio_plus("exportacao_pdf")
+
+        
+        st.divider()
+
+        st.subheader("Relatório mensal")
+
+        if recurso_disponivel("relatorios_mensais"):
+            meses = {
+                1: "Janeiro",
+                2: "Fevereiro",
+                3: "Março",
+                4: "Abril",
+                5: "Maio",
+                6: "Junho",
+                7: "Julho",
+                8: "Agosto",
+                9: "Setembro",
+                10: "Outubro",
+                11: "Novembro",
+                12: "Dezembro",
+            }
+
+            hoje = date.today()
+
+            col_mes, col_ano = st.columns(2)
+
+            with col_mes:
+                mes_relatorio = st.selectbox(
+                    "Mês",
+                    list(meses.keys()),
+                    format_func=lambda m: meses[m],
+                    index=hoje.month - 1
+                )
+
+            with col_ano:
+                ano_relatorio = st.number_input(
+                    "Ano",
+                    min_value=2020,
+                    max_value=2100,
+                    value=hoje.year,
+                    step=1
+                )
+
+            resumo_mensal, erro_resumo_mensal = calcular_resumo_mensal_online(
+                veiculo_ativo,
+                int(ano_relatorio),
+                int(mes_relatorio)
+            )
+
+            if erro_resumo_mensal:
+                st.error("Não foi possível gerar o relatório mensal.")
+                st.write(erro_resumo_mensal)
+            else:
+                st.write(
+                    f"Resumo de **{meses[int(mes_relatorio)]}/{int(ano_relatorio)}**"
+                )
+
+                col_rm1, col_rm2, col_rm3, col_rm4 = st.columns(4)
+
+                with col_rm1:
+                    st.metric(
+                        "Recargas no mês",
+                        resumo_mensal["total_recargas"]
+                    )
+
+                with col_rm2:
+                    st.metric(
+                        "Energia carregada",
+                        f"{resumo_mensal['energia_total']:.2f} kWh"
+                    )
+
+                with col_rm3:
+                    st.metric(
+                        "Gasto no mês",
+                        f"R$ {resumo_mensal['custo_total']:.2f}"
+                    )
+
+                with col_rm4:
+                    st.metric(
+                        "Preço médio kWh",
+                        f"R$ {resumo_mensal['preco_medio_kwh']:.2f}"
+                    )
+
+                col_rm5, col_rm6, col_rm7 = st.columns(3)
+
+                with col_rm5:
+                    st.metric(
+                        "Registros de KM",
+                        resumo_mensal["total_registros_km"]
+                    )
+
+                with col_rm6:
+                    st.metric(
+                        "KM registrados no mês",
+                        f"{resumo_mensal['km_registrados_mes']} km"
+                    )
+
+                with col_rm7:
+                    st.metric(
+                        "Manutenções realizadas",
+                        resumo_mensal["total_manutencoes"]
+                    )
+
+                if resumo_mensal["custo_por_km_mes"] is not None:
+                    st.success(
+                        f"Custo aproximado por km no mês: "
+                        f"R$ {resumo_mensal['custo_por_km_mes']:.4f}"
+                    )
+                else:
+                    st.info(
+                        "Para calcular custo por km no mês, registre recargas "
+                        "e atualizações de quilometragem no mesmo período."
+                    )
+
+                if (
+                    resumo_mensal["total_recargas"] == 0
+                    and resumo_mensal["total_registros_km"] == 0
+                    and resumo_mensal["total_manutencoes"] == 0
+                ):
+                    st.info(
+                        "Nenhum dado encontrado para o mês selecionado."
+                    )
+        else:
+            exibir_bloqueio_plus("relatorios_mensais")
 
 
 
