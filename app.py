@@ -3,6 +3,18 @@ import json
 import csv
 import io
 from datetime import datetime
+from xml.sax.saxutils import escape
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import cm
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle
+)
 from supabase_client import testar_conexao_supabase, testar_cliente_autenticado
 from auth_helpers import (
     inicializar_estado_auth,
@@ -411,6 +423,188 @@ def gerar_csv_quilometragem(historico_km):
         )
 
     return saida.getvalue()
+
+def gerar_pdf_resumo_veiculo(veiculo, resumo_recargas, resumo_manutencao):
+    """
+    Gera um PDF resumido do veículo com dados principais, recargas e manutenções.
+    Retorna bytes prontos para uso em st.download_button.
+    """
+    buffer = io.BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=2 * cm,
+        leftMargin=2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm
+    )
+
+    estilos = getSampleStyleSheet()
+    elementos = []
+
+    titulo = estilos["Title"]
+    subtitulo = estilos["Heading2"]
+    normal = estilos["BodyText"]
+
+    data_geracao = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+    elementos.append(Paragraph("EV Care — Relatório do Veículo", titulo))
+    elementos.append(Spacer(1, 0.4 * cm))
+    elementos.append(Paragraph(f"Gerado em: {data_geracao}", normal))
+    elementos.append(Spacer(1, 0.6 * cm))
+
+    marca_modelo = f"{veiculo.marca} {veiculo.modelo}"
+    autonomia = veiculo.calcular_autonomia()
+    saude_bateria = veiculo.calcular_saude_bateria()
+
+    elementos.append(Paragraph("Dados do veículo", subtitulo))
+
+    dados_veiculo = [
+        ["Veículo", escape(marca_modelo)],
+        ["KM atual", f"{veiculo.km_atual} km"],
+        ["Autonomia estimada", f"{autonomia:.0f} km"],
+        ["Saúde estimada da bateria", f"{saude_bateria:.2f}%"],
+        ["Bateria", escape(str(veiculo.info.get("Bateria", "Não informada")))],
+        ["Consumo", f"{veiculo.info.get('Consumo', 0)} km/kWh"],
+    ]
+
+    tabela_veiculo = Table(dados_veiculo, colWidths=[6 * cm, 9 * cm])
+    tabela_veiculo.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("PADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+
+    elementos.append(tabela_veiculo)
+    elementos.append(Spacer(1, 0.7 * cm))
+
+    elementos.append(Paragraph("Resumo de recargas", subtitulo))
+
+    custo_real = resumo_recargas.get("custo_real_km")
+    consumo_real = resumo_recargas.get("consumo_real_km_kwh")
+
+    dados_recargas = [
+        ["Total de recargas", resumo_recargas.get("total_recargas", 0)],
+        ["Energia total", f"{resumo_recargas.get('energia_total', 0):.2f} kWh"],
+        ["Gasto total", f"R$ {resumo_recargas.get('custo_total', 0):.2f}"],
+        ["Preço médio kWh", f"R$ {resumo_recargas.get('preco_medio_kwh', 0):.2f}"],
+        [
+            "Custo real por km",
+            f"R$ {custo_real:.4f}" if custo_real is not None else "Indisponível"
+        ],
+        [
+            "Consumo real",
+            f"{consumo_real:.2f} km/kWh" if consumo_real is not None else "Indisponível"
+        ],
+        ["KM considerados", f"{resumo_recargas.get('km_rodados', 0)} km"],
+    ]
+
+    tabela_recargas = Table(dados_recargas, colWidths=[6 * cm, 9 * cm])
+    tabela_recargas.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("PADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+
+    elementos.append(tabela_recargas)
+    elementos.append(Spacer(1, 0.7 * cm))
+
+    elementos.append(Paragraph("Resumo de manutenções", subtitulo))
+
+    total_servicos = resumo_manutencao.get("total_servicos", 0)
+    vencidos = resumo_manutencao.get("vencidos", [])
+    proximos = resumo_manutencao.get("proximos", [])
+    em_dia = resumo_manutencao.get("em_dia", [])
+
+    dados_manutencao = [
+        ["Total de serviços", total_servicos],
+        ["Vencidos", len(vencidos)],
+        ["Próximos", len(proximos)],
+        ["Em dia", len(em_dia)],
+    ]
+
+    tabela_manutencao = Table(dados_manutencao, colWidths=[6 * cm, 9 * cm])
+    tabela_manutencao.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("PADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+
+    elementos.append(tabela_manutencao)
+    elementos.append(Spacer(1, 0.7 * cm))
+
+    itens_status = resumo_manutencao.get("itens_status", [])
+
+    if itens_status:
+        elementos.append(Paragraph("Próximas manutenções relevantes", subtitulo))
+
+        dados_itens = [
+            ["Serviço", "Status", "Próxima KM", "Restante"]
+        ]
+
+        for servico, dados in itens_status[:6]:
+            km_restante = dados.get("km_restante", 0)
+
+            if km_restante >= 0:
+                restante_txt = f"{km_restante} km"
+            else:
+                restante_txt = f"Vencida há {abs(km_restante)} km"
+
+            dados_itens.append(
+                [
+                    escape(str(servico.get("nome", "Não informado"))),
+                    escape(str(dados.get("status", "Não informado"))),
+                    f"{dados.get('proxima_km', 0)} km",
+                    restante_txt
+                ]
+            )
+
+        tabela_itens = Table(
+            dados_itens,
+            colWidths=[6 * cm, 3 * cm, 3 * cm, 4 * cm]
+        )
+
+        tabela_itens.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("PADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+
+        elementos.append(tabela_itens)
+
+    elementos.append(Spacer(1, 0.7 * cm))
+    elementos.append(
+        Paragraph(
+            "Relatório gerado pelo EV Care. Os valores são estimativas baseadas nos dados registrados pelo usuário.",
+            normal
+        )
+    )
+
+    doc.build(elementos)
+
+    buffer.seek(0)
+    return buffer.getvalue()
 
     
 def calcular_progresso_inicial(garagem, veiculo_ativo):
@@ -1144,6 +1338,46 @@ if pagina == "Dashboard":
             "Este dashboard usa os dados salvos da garagem, recargas, quilometragem "
             "e plano de manutenção do veículo ativo."
         )
+
+        st.divider()
+
+        st.subheader("Relatório do veículo")
+
+        if recurso_disponivel("exportacao_pdf"):
+            resumo_manutencao_pdf, erro_manutencao_pdf = obter_resumo_manutencoes_online(
+                veiculo_id=veiculo_ativo.id_online,
+                km_atual=veiculo_ativo.km_atual
+            )
+
+            if erro_manutencao_pdf:
+                st.error("Não foi possível carregar os dados de manutenção para o relatório.")
+                st.write(erro_manutencao_pdf)
+            else:
+                pdf_relatorio = gerar_pdf_resumo_veiculo(
+                    veiculo=veiculo_ativo,
+                    resumo_recargas=resumo_recargas,
+                    resumo_manutencao=resumo_manutencao_pdf
+                )
+
+                nome_arquivo_pdf = (
+                    f"ev_care_relatorio_"
+                    f"{veiculo_ativo.marca}_{veiculo_ativo.modelo}.pdf"
+                )
+
+                nome_arquivo_pdf = nome_arquivo_pdf.replace(" ", "_").lower()
+
+                st.download_button(
+                    label="Baixar relatório PDF",
+                    data=pdf_relatorio,
+                    file_name=nome_arquivo_pdf,
+                    mime="application/pdf"
+                )
+
+                st.caption(
+                    "O relatório PDF reúne dados do veículo, recargas e manutenções."
+                )
+        else:
+            exibir_bloqueio_plus("exportacao_pdf")
 
 
 
