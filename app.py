@@ -374,6 +374,44 @@ def gerar_csv_manutencoes(manutencoes):
         )
 
     return saida.getvalue()
+
+def gerar_csv_quilometragem(historico_km):
+    """
+    Gera um arquivo CSV em texto com o histórico de quilometragem do veículo.
+    Usa separador ';' para facilitar abertura no Excel em PT-BR.
+    """
+    saida = io.StringIO()
+
+    # BOM UTF-8 para o Excel reconhecer acentos corretamente
+    saida.write("\ufeff")
+
+    escritor = csv.writer(saida, delimiter=";")
+
+    escritor.writerow(
+        [
+            "Data do registro",
+            "KM anterior",
+            "Nova KM",
+            "Diferença registrada"
+        ]
+    )
+
+    for registro in historico_km:
+        km_anterior = int(registro.get("km_anterior", 0) or 0)
+        km_nova = int(registro.get("km_nova", 0) or 0)
+        diferenca = km_nova - km_anterior
+
+        escritor.writerow(
+            [
+                registro.get("data_registro", ""),
+                km_anterior,
+                km_nova,
+                diferenca
+            ]
+        )
+
+    return saida.getvalue()
+
     
 def calcular_progresso_inicial(garagem, veiculo_ativo):
     """
@@ -1208,6 +1246,44 @@ elif pagina == "Quilometragem":
 
                 if diferenca >= 0:
                     st.write(f"**Diferença registrada:** {diferenca} km")
+    
+    st.divider()
+
+    st.subheader("Exportação de quilometragem")
+
+    if recurso_disponivel("exportacao_excel"):
+        historico_exportacao, erro_exportacao = listar_historico_km_online(
+            veiculo_ativo.id_online
+        )
+
+        if erro_exportacao:
+            st.error("Não foi possível carregar a quilometragem para exportação.")
+            st.write(erro_exportacao)
+        elif not historico_exportacao:
+            st.info("Ainda não há registros de quilometragem para exportar.")
+        else:
+            csv_quilometragem = gerar_csv_quilometragem(historico_exportacao)
+
+            nome_arquivo_csv = (
+                f"ev_care_quilometragem_"
+                f"{veiculo_ativo.marca}_{veiculo_ativo.modelo}.csv"
+            )
+
+            nome_arquivo_csv = nome_arquivo_csv.replace(" ", "_").lower()
+
+            st.download_button(
+                label="Baixar quilometragem em CSV",
+                data=csv_quilometragem,
+                file_name=nome_arquivo_csv,
+                mime="text/csv"
+            )
+
+            st.caption(
+                "O arquivo CSV pode ser aberto no Excel, Google Planilhas "
+                "ou outros aplicativos de planilha."
+            )
+    else:
+        exibir_bloqueio_plus("exportacao_excel")
 
 # =============================================================================
 # RECARGAS
