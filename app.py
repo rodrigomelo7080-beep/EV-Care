@@ -749,6 +749,72 @@ def mostrar_cabecalho_pagina(titulo, descricao=None):
 
     st.divider()
 
+def mostrar_card_metrica(titulo, valor, descricao=None):
+    """
+    Mostra um card visual simples para métricas e indicadores.
+    """
+    with st.container(border=True):
+        st.caption(titulo)
+        st.markdown(f"### {valor}")
+
+        if descricao:
+            st.caption(descricao)
+
+
+def mostrar_bloco_secao(titulo, descricao=None):
+    """
+    Mostra título e descrição padronizados para seções internas.
+    """
+    st.subheader(titulo)
+
+    if descricao:
+        st.caption(descricao)
+
+
+def mostrar_status_plano_visual():
+    """
+    Mostra o plano atual do usuário de forma visual.
+    """
+    plano = str(st.session_state.get("auth_plano", "free")).lower()
+    status = str(st.session_state.get("auth_status_assinatura", "inactive")).lower()
+
+    if plano == "plus" and status == "active":
+        st.success("Plano Plus ativo")
+    elif plano == "plus":
+        st.warning("Plano Plus sem assinatura ativa")
+    else:
+        st.info("Plano Free")
+
+
+def formatar_moeda(valor):
+    """
+    Formata valores em reais.
+    """
+    try:
+        return f"R$ {float(valor):.2f}"
+    except Exception:
+        return "R$ 0.00"
+
+
+def formatar_km(valor):
+    """
+    Formata quilometragem.
+    """
+    try:
+        return f"{int(valor):,} km".replace(",", ".")
+    except Exception:
+        return "0 km"
+
+
+def formatar_numero(valor, casas=2):
+    """
+    Formata número com casas decimais.
+    """
+    try:
+        return f"{float(valor):.{casas}f}"
+    except Exception:
+        return f"{0:.{casas}f}"
+
 
 def mostrar_aviso_recurso_plus(nome_recurso):
     """
@@ -981,42 +1047,47 @@ if pagina == "Dashboard":
     # ---------------------------------------------------------------------
     # CABEÇALHO DO VEÍCULO
     # ---------------------------------------------------------------------
-    st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
+    with st.container(border=True):
+        st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
+        st.caption("Resumo principal do veículo ativo")
 
-    col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4 = st.columns(4)
 
-    with col1:
-        st.metric(
-            "KM atual",
-            f"{veiculo_ativo.km_atual:,} km".replace(",", ".")
-        )
+        with col1:
+            st.metric(
+                "KM atual",
+                formatar_km(veiculo_ativo.km_atual)
+            )
 
-    with col2:
-        st.metric(
-            "Autonomia estimada",
-            f"{autonomia:.0f} km"
-        )
+        with col2:
+            st.metric(
+                "Autonomia estimada",
+                f"{autonomia:.0f} km"
+            )
 
-    with col3:
-        st.metric(
-            "Saúde estimada da bateria",
-            f"{saude_bateria:.2f}%"
-        )
+        with col3:
+            st.metric(
+                "Saúde estimada da bateria",
+                f"{saude_bateria:.2f}%"
+            )
 
-    with col4:
-        st.metric(
-            "Recargas registradas",
-            resumo_recargas["total_recargas"]
-        )
+        with col4:
+            st.metric(
+                "Recargas registradas",
+                resumo_recargas["total_recargas"]
+            )
 
-    st.progress(min(max(saude_bateria / 100, 0), 1))
+        st.progress(min(max(saude_bateria / 100, 0), 1))
 
     st.divider()
 
     # ---------------------------------------------------------------------
     # CUSTOS E EFICIÊNCIA
     # ---------------------------------------------------------------------
-    st.subheader("Custos e eficiência")
+    mostrar_bloco_secao(
+        "Custos e eficiência",
+        "Resumo financeiro e energético com base nas recargas registradas."
+    )
 
     col_custo1, col_custo2, col_custo3, col_custo4 = st.columns(4)
 
@@ -2780,6 +2851,7 @@ elif pagina == "Planos":
     )
 
     exibir_resumo_plano()
+    mostrar_status_plano_visual()
 
     st.divider()
 
@@ -2809,7 +2881,7 @@ elif pagina == "Planos":
     with col_plus:
         with st.container(border=True):
             st.subheader("EV Care Plus")
-            st.caption("Para quem quer relatórios e exportações")
+            st.caption("Relatórios, exportações e recursos avançados")
 
             st.markdown(
                 """
@@ -2880,6 +2952,19 @@ elif pagina == "Feedback":
             "Use este formulário para relatar problemas, sugerir melhorias ou "
             "comentar sua experiência com o EV Care."
         )
+        with st.container(border=True):
+            st.write("### Como enviar um bom feedback")
+            st.markdown(
+                """
+                Para ajudar na melhoria do EV Care, tente informar:
+
+                - O que você tentou fazer
+                - Em qual página aconteceu
+                - O que ocorreu
+                - O que você esperava que acontecesse
+                - Se o problema aconteceu uma ou várias vezes
+                """
+            )
 
         with st.form("form_feedback_online"):
             pagina_feedback = st.selectbox(
