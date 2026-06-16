@@ -3211,30 +3211,262 @@ elif pagina == "Minha Garagem":
                                 st.error("Não foi possível cadastrar o veículo.")
                                 st.write(resposta)
 
-elif pagina == "Configurações":
+
+# =============================================================================
+# CONTA
+# =============================================================================
+
+elif pagina == "Conta":
     mostrar_cabecalho_pagina(
-        "Configurações",
-        "Visualize informações gerais da conta e dos dados do aplicativo."
+        "Conta",
+        "Acesse sua conta, plano e informações de assinatura."
     )
 
-    st.subheader("Conta")
-
     if st.session_state.get("auth_logado", False):
+        st.success("Conta conectada")
+
         st.write(f"**E-mail:** {st.session_state.auth_email}")
+        st.write(f"**Nome:** {st.session_state.auth_nome}")
         st.write(f"**Plano atual:** {st.session_state.auth_plano}")
         st.write(
             f"**Status da assinatura:** "
             f"{st.session_state.get('auth_status_assinatura', 'inactive')}"
         )
+
+        st.info(
+            "Sua conta está ativa. Os dados do veículo são vinculados ao seu login."
+        )
+
+        if st.button("Sair da conta"):
+            sair_usuario()
+            st.success("Você saiu da conta.")
+            st.rerun()
+
     else:
-        st.info("Faça login para visualizar as configurações da conta.")
+        tab_login, tab_cadastro = st.tabs(["Entrar", "Criar conta"])
 
-    st.divider()
+        with tab_login:
+            st.subheader("Entrar")
 
-    st.subheader("Dados")
+            email_login = st.text_input("E-mail", key="login_email")
+            senha_login = st.text_input(
+                "Senha",
+                type="password",
+                key="login_senha"
+            )
 
-    st.write(
-        "Os dados de veículos, quilometragem, recargas e manutenções "
-        "são vinculados à sua conta."
+            if st.button("Entrar"):
+                if not email_login or not senha_login:
+                    st.warning("Informe e-mail e senha.")
+                else:
+                    ok, mensagem = entrar_usuario(email_login, senha_login)
+
+                    if ok:
+                        st.success(mensagem)
+                        st.rerun()
+                    else:
+                        st.error(mensagem)
+
+        with tab_cadastro:
+            st.subheader("Criar conta")
+
+            nome_cadastro = st.text_input("Nome", key="cadastro_nome")
+            email_cadastro = st.text_input("E-mail", key="cadastro_email")
+            senha_cadastro = st.text_input(
+                "Senha",
+                type="password",
+                key="cadastro_senha"
+            )
+
+            st.caption("Use uma senha com pelo menos 6 caracteres.")
+
+            if st.button("Criar conta"):
+                if not email_cadastro or not senha_cadastro:
+                    st.warning("Informe e-mail e senha.")
+                elif len(senha_cadastro) < 6:
+                    st.warning("A senha deve ter pelo menos 6 caracteres.")
+                else:
+                    ok, mensagem = criar_conta(
+                        email_cadastro,
+                        senha_cadastro,
+                        nome_cadastro
+                    )
+
+                    if ok:
+                        st.success(mensagem)
+
+                        if st.session_state.get("auth_logado", False):
+                            st.rerun()
+                    else:
+                        st.error(mensagem)
+
+
+
+elif pagina == "Configurações":
+    mostrar_cabecalho_pagina(
+        "Configurações",
+        "Ajustes gerais, informações do aplicativo e orientações do Beta."
     )
+
+    tab1, tab2, tab3 = st.tabs(
+        [
+            "Geral",
+            "Dados",
+            "Beta"
+        ]
+    )
+
+    # -------------------------------------------------------------------------
+    # GERAL
+    # -------------------------------------------------------------------------
+    with tab1:
+        st.subheader("Informações gerais")
+
+        st.write(
+            "O EV Care foi criado para ajudar no acompanhamento de veículos elétricos, "
+            "incluindo quilometragem, recargas, custos, manutenções e relatórios."
+        )
+
+        st.divider()
+
+        st.subheader("Resumo do uso")
+
+        if st.session_state.get("auth_logado", False):
+            veiculo_ativo = obter_veiculo_ativo()
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric(
+                    "Conta",
+                    "Conectada"
+                )
+
+            with col2:
+                st.metric(
+                    "Plano",
+                    str(st.session_state.get("auth_plano", "free")).upper()
+                )
+
+            with col3:
+                if veiculo_ativo:
+                    st.metric(
+                        "Veículo ativo",
+                        f"{veiculo_ativo.marca} {veiculo_ativo.modelo}"
+                    )
+                else:
+                    st.metric(
+                        "Veículo ativo",
+                        "Nenhum"
+                    )
+
+            if not veiculo_ativo:
+                st.info(
+                    "Cadastre ou selecione um veículo em **Minha Garagem** "
+                    "para usar todos os recursos do aplicativo."
+                )
+        else:
+            st.info(
+                "Faça login na página **Conta** para acessar seus veículos e registros."
+            )
+
+        st.divider()
+
+        st.subheader("Preferências")
+
+        st.write(
+            "Nesta versão Beta, as preferências avançadas ainda estão em evolução."
+        )
+
+        estado_padrao = st.selectbox(
+            "Estado padrão para estimativas de energia",
+            ["CE", "SP", "RJ", "MG", "RS", "PR", "SC", "BA", "PE", "DF"],
+            index=0,
+            key="config_estado_padrao"
+        )
+
+        st.caption(
+            f"Estado selecionado para referência visual nesta sessão: {estado_padrao}"
+        )
+
+    # -------------------------------------------------------------------------
+    # DADOS
+    # -------------------------------------------------------------------------
+    with tab2:
+        st.subheader("Como seus dados são organizados")
+
+        st.write(
+            "Os registros do EV Care são vinculados à conta do usuário. "
+            "Cada conta possui seus próprios veículos, recargas, quilometragem, "
+            "manutenções e relatórios."
+        )
+
+        st.divider()
+
+        st.subheader("Dados acompanhados pelo aplicativo")
+
+        st.markdown(
+            """
+            Atualmente o EV Care acompanha:
+
+            - Veículos cadastrados
+            - Quilometragem e histórico de KM
+            - Recargas e custos
+            - Manutenções e plano de serviços
+            - Histórico geral
+            - Relatórios e exportações para usuários Plus
+            """
+        )
+
+        st.divider()
+
+        st.subheader("Troca de conta")
+
+        st.info(
+            "Ao sair de uma conta e entrar em outra, o aplicativo limpa os dados "
+            "da sessão anterior para evitar mistura de informações entre usuários."
+        )
+
+    # -------------------------------------------------------------------------
+    # BETA
+    # -------------------------------------------------------------------------
+    with tab3:
+        st.subheader("Status do Beta")
+
+        st.write(
+            "O EV Care está em fase Beta. Isso significa que o aplicativo já possui "
+            "funcionalidades principais, mas ainda pode receber ajustes de interface, "
+            "regras de plano, relatórios e melhorias com base nos testes."
+        )
+
+        st.divider()
+
+        st.subheader("Checklist recomendado para testes")
+
+        st.markdown(
+            """
+            Durante os testes, recomendamos validar:
+
+            - Criar conta e fazer login
+            - Cadastrar veículo em Minha Garagem
+            - Atualizar quilometragem
+            - Registrar, editar e excluir recargas
+            - Registrar manutenções
+            - Adicionar serviço manual ao plano de manutenção
+            - Conferir Dashboard
+            - Conferir Custos e Economia
+            - Conferir Histórico
+            - Testar recursos Plus com conta Plus ativa
+            """
+        )
+
+        st.divider()
+
+        st.subheader("Aviso importante")
+
+        st.warning(
+            "Por estar em Beta, o EV Care pode passar por mudanças de layout, "
+            "estrutura de planos e regras de uso. Evite inserir informações sensíveis "
+            "em campos de observação."
+        )
 
