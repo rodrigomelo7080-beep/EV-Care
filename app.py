@@ -1192,28 +1192,27 @@ if pagina == "Dashboard":
         # ---------------------------------------------------------------------
         st.subheader("Manutenções e alertas")
 
-        itens_manutencao = []
-
-        for item in veiculo_ativo.plano.keys():
-            dados_status = calcular_status_manutencao(veiculo_ativo, item)
-            itens_manutencao.append((item, dados_status))
-
-        ordem_status = {
-            "Vencido": 0,
-            "Próximo": 1,
-            "Em dia": 2
-        }
-
-        itens_manutencao.sort(
-            key=lambda x: (
-                ordem_status.get(x[1]["status"], 3),
-                x[1]["km_restante"]
-            )
+        resumo_manutencao_dashboard, erro_manutencao_dashboard = obter_resumo_manutencoes_online(
+            veiculo_id=veiculo_ativo.id_online,
+            km_atual=veiculo_ativo.km_atual
         )
 
-        vencidos = [x for x in itens_manutencao if x[1]["status"] == "Vencido"]
-        proximos = [x for x in itens_manutencao if x[1]["status"] == "Próximo"]
-        em_dia = [x for x in itens_manutencao if x[1]["status"] == "Em dia"]
+        if erro_manutencao_dashboard:
+            st.error("Erro ao carregar resumo de manutenções.")
+            st.write(erro_manutencao_dashboard)
+
+            resumo_manutencao_dashboard = {
+                "itens_status": [],
+                "vencidos": [],
+                "proximos": [],
+                "em_dia": [],
+                "total_servicos": 0
+            }
+
+        itens_manutencao = resumo_manutencao_dashboard.get("itens_status", [])
+        vencidos = resumo_manutencao_dashboard.get("vencidos", [])
+        proximos = resumo_manutencao_dashboard.get("proximos", [])
+        em_dia = resumo_manutencao_dashboard.get("em_dia", [])
 
         col_m1, col_m2, col_m3 = st.columns(3)
 
@@ -1230,8 +1229,10 @@ if pagina == "Dashboard":
             st.error("Existem manutenções vencidas.")
         elif proximos:
             st.warning("Existem manutenções próximas.")
-        else:
+        elif itens_manutencao:
             st.success("Todas as manutenções estão em dia.")
+        else:
+            st.info("Nenhum serviço de manutenção cadastrado.")
 
         # ---------------------------------------------------------------------
         # PRÓXIMA MANUTENÇÃO MAIS IMPORTANTE
@@ -1239,33 +1240,35 @@ if pagina == "Dashboard":
         st.write("### Próxima manutenção relevante")
 
         if itens_manutencao:
-            item_mais_relevante, dados_mais_relevante = itens_manutencao[0]
+            servico_mais_relevante, dados_mais_relevante = itens_manutencao[0]
 
             with st.container(border=True):
                 col_p1, col_p2, col_p3 = st.columns(3)
 
                 with col_p1:
                     st.write("**Serviço**")
-                    st.write(item_mais_relevante)
+                    st.write(servico_mais_relevante.get("nome", "Não informado"))
 
                 with col_p2:
                     st.write("**Status**")
-                    st.write(dados_mais_relevante["status"])
+                    st.write(dados_mais_relevante.get("status", "Não informado"))
 
                 with col_p3:
                     st.write("**Próxima em**")
-                    st.write(f"{dados_mais_relevante['proxima_km']} km")
+                    st.write(f"{dados_mais_relevante.get('proxima_km', 0)} km")
 
-                st.write(f"**Categoria:** {dados_mais_relevante['categoria']}")
-                st.write(f"**Criticidade:** {dados_mais_relevante['criticidade']}")
+                st.write(f"**Categoria:** {dados_mais_relevante.get('categoria', 'Geral')}")
+                st.write(f"**Criticidade:** {dados_mais_relevante.get('criticidade', 'Média')}")
 
-                if dados_mais_relevante["km_restante"] >= 0:
-                    st.write(f"Faltam **{dados_mais_relevante['km_restante']} km**")
+                km_restante = dados_mais_relevante.get("km_restante", 0)
+
+                if km_restante >= 0:
+                    st.write(f"Faltam **{km_restante} km**")
                 else:
-                    st.write(f"Vencida há **{abs(dados_mais_relevante['km_restante'])} km**")
+                    st.write(f"Vencida há **{abs(km_restante)} km**")
 
-                if dados_mais_relevante["descricao"]:
-                    st.caption(dados_mais_relevante["descricao"])
+                if dados_mais_relevante.get("descricao"):
+                    st.caption(dados_mais_relevante.get("descricao"))
         else:
             st.info("Nenhum item de manutenção cadastrado no plano.")
 
@@ -1277,21 +1280,26 @@ if pagina == "Dashboard":
         st.subheader("Resumo dos principais alertas")
 
         if vencidos or proximos:
-            for item, dados in itens_manutencao[:5]:
-                if dados["status"] == "Vencido":
-                    st.error(
-                        f"{item}: vencida há {abs(dados['km_restante'])} km "
-                        f"(próxima era em {dados['proxima_km']} km)."
-                    )
-                elif dados["status"] == "Próximo":
-                    st.warning(
-                        f"{item}: próxima em {dados['proxima_km']} km "
-                        f"(faltam {dados['km_restante']} km)."
-                    )
-        else:
-            st.success("Nenhum alerta crítico no momento.")
+            for servico, dados in itens_manutencao[:5]:
+                nome_servico = servico.get("nome", "Serviço não informado")
+                status_servico = dados.get("status", "Não informado")
+                km_restante = dados.get("km_restante", 0)
+                proxima_km = dados.get("proxima_km", 0)
 
-        st.divider()
+                if status_servico == "Vencido":
+                    st.error(
+                        f"{nome_servico}: vencida há {abs(km_restante)} km "
+                        f"(próxima era em {proxima_km} km)."
+                    )
+                elif status_servico == "Próximo":
+                    st.warning(
+                        f"{nome_servico}: próxima em {proxima_km} km "
+                        f"(faltam {km_restante} km)."
+                    )
+        elif itens_manutencao:
+            st.success("Nenhum alerta crítico no momento.")
+        else:
+            st.info("Nenhum serviço de manutenção cadastrado.")
 
         # ---------------------------------------------------------------------
         # AÇÕES RÁPIDAS
