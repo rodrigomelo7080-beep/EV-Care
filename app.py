@@ -2904,86 +2904,6 @@ elif pagina == "Feedback":
         "Não envie senhas, documentos, dados bancários ou informações sensíveis."
     )
 
-
-# =============================================================================
-# CONTA
-# =============================================================================
-
-if st.session_state.auth_logado:
-    st.success("Conta conectada")
-
-    st.write(f"**E-mail:** {st.session_state.auth_email}")
-    st.write(f"**Nome:** {st.session_state.auth_nome}")
-    st.write(f"**Plano atual:** {st.session_state.auth_plano}")
-    st.write(
-        f"**Status da assinatura:** "
-        f"{st.session_state.get('auth_status_assinatura', 'inactive')}"
-    )
-
-    st.info(
-        "Sua conta está ativa. Os dados do veículo são vinculados ao seu login."
-    )
-
-    if st.button("Sair da conta"):
-        sair_usuario()
-        st.success("Você saiu da conta.")
-        st.rerun()
-
-    else:
-        tab_login, tab_cadastro = st.tabs(["Entrar", "Criar conta"])
-
-        with tab_login:
-            st.subheader("Entrar")
-
-            email_login = st.text_input("E-mail", key="login_email")
-            senha_login = st.text_input("Senha", type="password", key="login_senha")
-
-            if st.button("Entrar"):
-                if not email_login or not senha_login:
-                    st.warning("Informe e-mail e senha.")
-                else:
-                    ok, mensagem = entrar_usuario(email_login, senha_login)
-
-                    if ok:
-                        st.success(mensagem)
-                        st.rerun()
-                    else:
-                        st.error(mensagem)
-
-        with tab_cadastro:
-            st.subheader("Criar conta")
-
-            nome_cadastro = st.text_input("Nome", key="cadastro_nome")
-            email_cadastro = st.text_input("E-mail", key="cadastro_email")
-            senha_cadastro = st.text_input("Senha", type="password", key="cadastro_senha")
-
-            st.caption("Use uma senha com pelo menos 6 caracteres.")
-
-            if st.button("Criar conta"):
-                if not email_cadastro or not senha_cadastro:
-                    st.warning("Informe e-mail e senha.")
-                elif len(senha_cadastro) < 6:
-                    st.warning("A senha deve ter pelo menos 6 caracteres.")
-                else:
-                    ok, mensagem = criar_conta(
-                        email_cadastro,
-                        senha_cadastro,
-                        nome_cadastro
-                    )
-
-                    if ok:
-                        st.success(mensagem)
-
-                        if st.session_state.get("auth_logado", False):
-                            st.rerun()
-                    else:
-                        st.error(mensagem)
-
-# =============================================================================
-# MINHA GARAGEM
-# =============================================================================
-
-
 elif pagina == "Minha Garagem":
     mostrar_cabecalho_pagina(
         "Minha Garagem",
@@ -3211,7 +3131,6 @@ elif pagina == "Minha Garagem":
                                 st.error("Não foi possível cadastrar o veículo.")
                                 st.write(resposta)
 
-
 # =============================================================================
 # CONTA
 # =============================================================================
@@ -3299,8 +3218,6 @@ elif pagina == "Conta":
                             st.rerun()
                     else:
                         st.error(mensagem)
-
-
 
 elif pagina == "Configurações":
     mostrar_cabecalho_pagina(
