@@ -66,12 +66,7 @@ from manutencoes_db import (
 
 from veiculo_online_adapter import converter_veiculo_online
 from ev_care_base import (
-    VeiculoEV,
     MANUTENCOES_EV_DETALHADAS,
-    carregar_dados,
-    salvar_dados,
-    carregar_veiculo_ativo,
-    salvar_veiculo_ativo,
     buscar_preco_kwh
 )
 
@@ -87,36 +82,6 @@ inicializar_estado_auth()
 # =============================================================================
 # FUNÇÕES DE APOIO DO APP VISUAL
 # =============================================================================
-
-def inicializar_estado(usuario):
-    """
-    Carrega garagem e veículo ativo para o usuário informado.
-    """
-    if "usuario_atual" not in st.session_state or st.session_state.usuario_atual != usuario:
-        st.session_state.usuario_atual = usuario
-        st.session_state.garagem = carregar_dados(usuario)
-
-        for veiculo in st.session_state.garagem:
-            garantir_plano_manutencao_expandido(veiculo)
-        st.session_state.veiculo_ativo = carregar_veiculo_ativo(usuario, st.session_state.garagem)
-        
-
-        if st.session_state.veiculo_ativo is None and st.session_state.garagem:
-            st.session_state.veiculo_ativo = st.session_state.garagem[0]
-
-
-def salvar_estado():
-    """
-    Salva garagem e veículo ativo.
-    """
-    usuario = st.session_state.usuario_atual
-    garagem = st.session_state.garagem
-    veiculo_ativo = st.session_state.veiculo_ativo
-
-    salvar_dados(garagem, usuario)
-
-    if veiculo_ativo:
-        salvar_veiculo_ativo(usuario, garagem, veiculo_ativo)
 
 def garantir_plano_manutencao_expandido(veiculo):
     """
@@ -154,44 +119,6 @@ def garantir_plano_manutencao_expandido(veiculo):
     return alterou
 
 
-def garantir_planos_garagem():
-    """
-    Aplica o plano expandido em todos os veículos da garagem.
-    """
-    alterou_algum = False
-
-    for veiculo in st.session_state.get("garagem", []):
-        if garantir_plano_manutencao_expandido(veiculo):
-            alterou_algum = True
-
-    if alterou_algum:
-        salvar_estado()
-
-
-def obter_data_ultima_manutencao(veiculo, item):
-    """
-    Busca a última data de manutenção registrada no histórico textual.
-    """
-    try:
-        for registro in reversed(veiculo.historico):
-            if f"] {item} aos " in registro:
-                data_txt = registro.split("] ")[0][1:]
-                return datetime.strptime(data_txt, "%d/%m/%Y %H:%M")
-    except:
-        return None
-
-    return None
-
-
-def obter_metadata_manutencao(veiculo, item):
-    """
-    Retorna metadados detalhados do serviço.
-    """
-    detalhes = veiculo.info.get("ManutencaoDetalhada", {})
-
-    if item in detalhes:
-        return detalhes[item]
-
     return {
         "categoria": "Personalizado",
         "intervalo_km": veiculo.plano.get(item, 10000),
@@ -200,113 +127,12 @@ def obter_metadata_manutencao(veiculo, item):
         "descricao": "Serviço personalizado."
     }
 
-def calcular_status_manutencao(veiculo, item):
-    """
-    Calcula o status da manutenção com base na última KM real
-    em que o serviço foi realizado.
 
-    Regra principal:
-    próxima_km = última_km_registrada + intervalo_km
-
-    Status:
-    - Vencido: passou da KM ou do prazo
-    - Próximo: faltam 20% ou menos do intervalo
-    - Em dia: ainda está fora da janela de alerta
-    """
-    metadata = obter_metadata_manutencao(veiculo, item)
-
-    intervalo_km = int(
-        metadata.get(
-            "intervalo_km",
-            veiculo.plano.get(item, 10000)
-        )
-    )
-
-    intervalo_meses = int(
-        metadata.get(
-            "intervalo_meses",
-            0
-        )
-    )
-
-    ultima_km = int(
-        veiculo.ultima_revisao.get(item, 0)
-    )
-
-    proxima_km = ultima_km + intervalo_km
-    km_restante = proxima_km - int(veiculo.km_atual)
-
-    data_ultima = obter_data_ultima_manutencao(veiculo, item)
-    dias_restantes = None
-
-    if data_ultima and intervalo_meses > 0:
-        dias_intervalo = intervalo_meses * 30
-        dias_passados = (datetime.now() - data_ultima).days
-        dias_restantes = dias_intervalo - dias_passados
-    else:
-        dias_intervalo = None
-
-    # -----------------------------
-    # Regra de vencimento por KM
-    # -----------------------------
-    vencido_por_km = km_restante <= 0
-
-    # -----------------------------
-    # Regra de proximidade por KM
-    # Próximo somente quando faltar 20% ou menos do intervalo
-    # Exemplo: intervalo 5000 km → próximo quando faltar 1000 km ou menos
-    # -----------------------------
-    limite_proximo_km = max(int(intervalo_km * 0.2), 100)
-    proximo_por_km = 0 < km_restante <= limite_proximo_km
-
-    # -----------------------------
-    # Regra de vencimento por tempo
-    # -----------------------------
-    vencido_por_tempo = dias_restantes is not None and dias_restantes <= 0
-
-    # -----------------------------
-    # Regra de proximidade por tempo
-    # Próximo somente quando faltar 20% ou menos do prazo
-    # Exemplo: 12 meses ≈ 360 dias → próximo quando faltar 72 dias ou menos
-    # Exemplo: 1 mês ≈ 30 dias → próximo quando faltar 6 dias ou menos
-    # -----------------------------
-    if dias_restantes is not None and dias_intervalo:
-        limite_proximo_dias = max(int(dias_intervalo * 0.2), 3)
-        proximo_por_tempo = 0 < dias_restantes <= limite_proximo_dias
-    else:
-        limite_proximo_dias = None
-        proximo_por_tempo = False
-
-    if vencido_por_km or vencido_por_tempo:
-        status = "Vencido"
-    elif proximo_por_km or proximo_por_tempo:
-        status = "Próximo"
-    else:
-        status = "Em dia"
-
-    return {
-        "status": status,
-        "categoria": metadata.get("categoria", "Geral"),
-        "criticidade": metadata.get("criticidade", "Média"),
-        "descricao": metadata.get("descricao", ""),
-        "intervalo_km": intervalo_km,
-        "intervalo_meses": intervalo_meses,
-        "ultima_km": ultima_km,
-        "proxima_km": proxima_km,
-        "km_restante": km_restante,
-        "data_ultima": data_ultima,
-        "dias_restantes": dias_restantes,
-        "limite_proximo_km": limite_proximo_km,
-        "limite_proximo_dias": limite_proximo_dias
-    }
 
 
 def obter_veiculo_ativo():
     return st.session_state.get("veiculo_ativo", None)
 
-
-def obter_garagem():
-    return st.session_state.get("garagem", [])
 
 def gerar_csv_recargas(recargas):
     """
@@ -769,147 +595,6 @@ def calcular_resumo_mensal_online(veiculo, ano, mes):
 
     return resumo, None
 
-    
-def calcular_progresso_inicial(garagem, veiculo_ativo):
-    """
-    Calcula o progresso básico do usuário no primeiro uso do app.
-    Não altera dados, apenas analisa o estado atual.
-    """
-    passos = {
-        "Veículo cadastrado": bool(garagem),
-        "Veículo ativo selecionado": veiculo_ativo is not None,
-        "Primeira recarga registrada": False,
-        "Quilometragem atualizada": False,
-        "Manutenção configurada": False
-    }
-
-    if veiculo_ativo:
-        passos["Primeira recarga registrada"] = len(veiculo_ativo.historico_recargas) > 0
-        passos["Quilometragem atualizada"] = len(veiculo_ativo.historico_km) > 0
-        passos["Manutenção configurada"] = len(veiculo_ativo.plano) > 0
-
-    total = len(passos)
-    concluidos = sum(1 for valor in passos.values() if valor)
-    progresso = concluidos / total if total > 0 else 0
-
-    return passos, progresso
-
-
-def mostrar_onboarding_sem_veiculo():
-    """
-    Tela de boas-vindas para usuários sem veículo cadastrado.
-    """
-    st.markdown("## Bem-vindo ao EV Care ⚡")
-
-    st.write(
-        "O EV Care ajuda você a acompanhar **recargas, custos, autonomia, "
-        "quilometragem e manutenções** do seu carro elétrico em um só lugar."
-    )
-
-    st.info(
-        "Para começar, cadastre seu primeiro veículo em **Minha Garagem**."
-    )
-
-    st.divider()
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.markdown("### 1. Cadastre seu veículo")
-        st.write(
-            "Adicione um carro pelo catálogo ou manualmente informando bateria, "
-            "consumo médio e quilometragem atual."
-        )
-
-    with col2:
-        st.markdown("### 2. Registre recargas")
-        st.write(
-            "Cadastre suas recargas para acompanhar gasto total, preço médio "
-            "do kWh e custo real por km."
-        )
-
-    with col3:
-        st.markdown("### 3. Acompanhe manutenções")
-        st.write(
-            "Use o plano de manutenção EV para saber o que está em dia, próximo "
-            "ou vencido."
-        )
-
-    st.divider()
-
-    st.success(
-        "Fluxo recomendado: Minha Garagem → Quilometragem → Recargas → Manutenções → Dashboard."
-    )
-
-
-def mostrar_guia_primeiro_uso(garagem, veiculo_ativo):
-    """
-    Mostra um guia de progresso para orientar o usuário.
-    """
-    passos, progresso = calcular_progresso_inicial(garagem, veiculo_ativo)
-
-    st.subheader("Guia de primeiros passos")
-
-    st.progress(progresso)
-
-    for nome, concluido in passos.items():
-        if concluido:
-            st.success(f"✅ {nome}")
-        else:
-            st.warning(f"⬜ {nome}")
-
-    if progresso < 1:
-        st.info(
-            "Complete os passos acima para aproveitar melhor os cálculos de custo, "
-            "consumo real e manutenção."
-        )
-    else:
-        st.success("Configuração inicial concluída. O EV Care já está pronto para uso diário.")
-
-
-def mostrar_alertas_de_uso(veiculo_ativo):
-    """
-    Mostra orientações rápidas de uso dentro do Dashboard.
-    """
-    if not veiculo_ativo:
-        return
-
-    alertas = []
-
-    if len(veiculo_ativo.historico_recargas) == 0:
-        alertas.append(
-            "Registre sua primeira recarga para calcular gastos e custo por km."
-        )
-
-    if len(veiculo_ativo.historico_km) == 0:
-        alertas.append(
-            "Atualize a quilometragem após usar o veículo para melhorar os cálculos reais."
-        )
-
-    resumo = veiculo_ativo.obter_resumo_recargas()
-
-    if resumo["custo_real_km"] is None and len(veiculo_ativo.historico_recargas) > 0:
-        alertas.append(
-            "Para obter custo real por km, registre uma recarga e depois atualize a quilometragem."
-        )
-
-    if alertas:
-        st.subheader("Orientações rápidas")
-
-        for alerta in alertas:
-            st.info(alerta)
-
-def formatar_nome_veiculo(veiculo):
-    return f"{veiculo.marca} {veiculo.modelo} - {veiculo.km_atual} km"
-
-
-def atualizar_veiculo_ativo_por_indice(indice):
-    garagem = obter_garagem()
-
-    if garagem and 0 <= indice < len(garagem):
-        st.session_state.veiculo_ativo = garagem[indice]
-        salvar_estado()
-
 def validar_contexto_online(nome_pagina):
     """
     Valida se o usuário está logado e possui um veículo online ativo.
@@ -1088,14 +773,14 @@ st.sidebar.caption("Gestão de carros elétricos")
 
 usuario = "default"
 
-inicializar_estado(usuario)
-
 if st.session_state.get("auth_logado", False):
     carregar_veiculo_online_ativo_para_app()
 else:
-    inicializar_estado(usuario)
+    st.session_state.veiculo_ativo = None
+    st.session_state.veiculo_ativo_origem = None
+    st.session_state.erro_veiculo_online_ativo = None
 
-garagem = obter_garagem()
+garagem = []
 veiculo_ativo = obter_veiculo_ativo()
 
 
@@ -1122,24 +807,6 @@ pagina = st.sidebar.radio(
 
 st.sidebar.divider()
 
-with st.sidebar.expander("Guia rápido"):
-    passos_sidebar, progresso_sidebar = calcular_progresso_inicial(
-        garagem,
-        veiculo_ativo
-    )
-
-    st.progress(progresso_sidebar)
-
-    for nome, concluido in passos_sidebar.items():
-        if concluido:
-            st.write(f"✅ {nome}")
-        else:
-            st.write(f"⬜ {nome}")
-
-    st.caption(
-        "Use este guia para completar a configuração inicial do EV Care."
-    )
-
 
 if st.session_state.auth_logado:
     st.sidebar.success(f"Logado: {st.session_state.auth_email}")
@@ -1156,7 +823,7 @@ st.title("⚡ EV Care")
 st.caption("Aplicativo para gestão de veículos elétricos")
 
 # Atualiza referências após possíveis mudanças
-garagem = obter_garagem()
+garagem = []
 veiculo_ativo = obter_veiculo_ativo()
 
 if st.session_state.get("auth_logado", False):
@@ -1174,26 +841,7 @@ if st.session_state.get("auth_logado", False):
         st.sidebar.error(st.session_state.erro_veiculo_online_ativo)
 
 else:
-    if garagem:
-        nomes_veiculos = [formatar_nome_veiculo(v) for v in garagem]
-
-        indice_padrao = 0
-
-        if veiculo_ativo in garagem:
-            indice_padrao = garagem.index(veiculo_ativo)
-
-        indice_escolhido = st.sidebar.selectbox(
-            "Veículo ativo",
-            range(len(garagem)),
-            format_func=lambda i: nomes_veiculos[i],
-            index=indice_padrao
-        )
-
-        if garagem[indice_escolhido] != veiculo_ativo:
-            atualizar_veiculo_ativo_por_indice(indice_escolhido)
-            veiculo_ativo = obter_veiculo_ativo()
-    else:
-        st.sidebar.warning("Nenhum veículo cadastrado.")
+    st.sidebar.info("Faça login para acessar seus dados.")
 
 
 # =============================================================================
