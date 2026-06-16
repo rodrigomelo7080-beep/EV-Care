@@ -63,6 +63,10 @@ from manutencoes_db import (
     listar_manutencoes_online,
     obter_resumo_manutencoes_online
 )
+from feedback_db import (
+    registrar_feedback_online,
+    listar_meus_feedbacks
+)
 
 from veiculo_online_adapter import converter_veiculo_online
 from ev_care_base import (
@@ -2853,55 +2857,137 @@ elif pagina == "Planos":
 elif pagina == "Feedback":
     mostrar_cabecalho_pagina(
         "Feedback do EV Care",
-        "Envie sugestões e ajude a melhorar o aplicativo."
+        "Envie sugestões, relate problemas e ajude a melhorar o aplicativo."
     )
 
-    st.write(
-        "O EV Care está em fase Beta. Seu feedback ajuda a identificar problemas, "
-        "priorizar melhorias e validar quais recursos são mais úteis."
-    )
+    if not st.session_state.get("auth_logado", False):
+        st.warning("Faça login na página **Conta** para enviar feedback.")
+        st.info(
+            "O feedback é vinculado à sua conta para facilitar o acompanhamento "
+            "de problemas, sugestões e melhorias."
+        )
+        st.stop()
 
-    st.divider()
+    tab1, tab2 = st.tabs(["Enviar feedback", "Meus feedbacks"])
 
-    st.subheader("O que você pode avaliar?")
+    # -------------------------------------------------------------------------
+    # ENVIAR FEEDBACK
+    # -------------------------------------------------------------------------
+    with tab1:
+        st.subheader("Enviar feedback")
 
-    st.markdown(
-        """
-        - Facilidade para cadastrar veículo
-        - Registro de quilometragem
-        - Registro e edição de recargas
-        - Controle de manutenções
-        - Clareza do Dashboard
-        - Página de Custos e Economia
-        - Exportações e relatórios Plus
-        - Sugestões de novos recursos
-        """
-    )
+        st.write(
+            "Use este formulário para relatar problemas, sugerir melhorias ou "
+            "comentar sua experiência com o EV Care."
+        )
 
-    st.divider()
+        with st.form("form_feedback_online"):
+            pagina_feedback = st.selectbox(
+                "Página relacionada",
+                [
+                    "Dashboard",
+                    "Minha Garagem",
+                    "Quilometragem",
+                    "Recargas",
+                    "Manutenções",
+                    "Viagens",
+                    "Custos e Economia",
+                    "Histórico",
+                    "Planos",
+                    "Conta",
+                    "Configurações",
+                    "Outro"
+                ]
+            )
 
-    st.subheader("Modelo de feedback")
+            tipo_feedback = st.selectbox(
+                "Tipo de feedback",
+                [
+                    "Problema encontrado",
+                    "Sugestão de melhoria",
+                    "Dúvida",
+                    "Elogio",
+                    "Ideia para recurso Plus",
+                    "Outro"
+                ]
+            )
 
-    st.markdown(
-        """
-        Copie este modelo e envie pelo canal de contato definido para os testes:
+            nota_feedback = st.slider(
+                "Nota geral para sua experiência",
+                min_value=1,
+                max_value=5,
+                value=4
+            )
 
-        - Nome:
-        - E-mail:
-        - Modelo do veículo:
-        - Página testada:
-        - O que você tentou fazer:
-        - O que aconteceu:
-        - O que você esperava:
-        - O que ficou confuso:
-        - Sugestão de melhoria:
-        - Você teria interesse no EV Care Plus? Sim/Não
-        """
-    )
+            interesse_plus = st.checkbox(
+                "Tenho interesse em recursos Plus"
+            )
 
-    st.warning(
-        "Não envie senhas, documentos, dados bancários ou informações sensíveis."
-    )
+            mensagem_feedback = st.text_area(
+                "Descreva seu feedback",
+                placeholder=(
+                    "Exemplo: Na página Recargas, tentei editar uma recarga "
+                    "e percebi que..."
+                ),
+                height=180
+            )
+
+            enviar_feedback = st.form_submit_button("Enviar feedback")
+
+            if enviar_feedback:
+                if not mensagem_feedback.strip():
+                    st.warning("Escreva uma mensagem antes de enviar.")
+                else:
+                    ok, resposta = registrar_feedback_online(
+                        user_id=st.session_state.auth_user_id,
+                        email=st.session_state.auth_email,
+                        nome=st.session_state.auth_nome,
+                        pagina=pagina_feedback,
+                        tipo=tipo_feedback,
+                        mensagem=mensagem_feedback.strip(),
+                        interesse_plus=interesse_plus,
+                        nota=nota_feedback
+                    )
+
+                    if ok:
+                        st.success(resposta)
+                        st.rerun()
+                    else:
+                        st.error("Não foi possível enviar o feedback.")
+                        st.write(resposta)
+
+        st.warning(
+            "Não envie senhas, documentos, dados bancários ou informações sensíveis."
+        )
+
+    # -------------------------------------------------------------------------
+    # MEUS FEEDBACKS
+    # -------------------------------------------------------------------------
+    with tab2:
+        st.subheader("Meus feedbacks enviados")
+
+        feedbacks, erro_feedbacks = listar_meus_feedbacks()
+
+        if erro_feedbacks:
+            st.error("Não foi possível carregar seus feedbacks.")
+            st.write(erro_feedbacks)
+        elif not feedbacks:
+            st.info("Você ainda não enviou feedbacks.")
+        else:
+            for feedback in feedbacks:
+                with st.container(border=True):
+                    st.write(f"**Página:** {feedback.get('pagina', 'Não informada')}")
+                    st.write(f"**Tipo:** {feedback.get('tipo', 'Não informado')}")
+                    st.write(f"**Nota:** {feedback.get('nota', 'Não informada')}")
+                    st.write(f"**Status:** {feedback.get('status', 'novo')}")
+                    st.write(f"**E-mail enviado:** {'Sim' if feedback.get('email_enviado') else 'Não'}")
+                    st.write(f"**Enviado em:** {feedback.get('created_at', 'Não informado')}")
+
+                    if feedback.get("interesse_plus"):
+                        st.caption("Usuário demonstrou interesse em recursos Plus.")
+
+                    st.write("**Mensagem:**")
+                    st.write(feedback.get("mensagem", ""))
 
 elif pagina == "Minha Garagem":
     mostrar_cabecalho_pagina(
