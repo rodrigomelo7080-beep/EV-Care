@@ -15,7 +15,6 @@ from reportlab.platypus import (
     Table,
     TableStyle
 )
-from supabase_client import testar_conexao_supabase, testar_cliente_autenticado
 from auth_helpers import (
     inicializar_estado_auth,
     criar_conta,
