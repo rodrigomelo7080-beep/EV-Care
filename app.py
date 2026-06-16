@@ -1049,6 +1049,33 @@ def carregar_veiculo_online_ativo_para_app():
 
     return True
 
+def mostrar_cabecalho_pagina(titulo, descricao=None):
+    """
+    Mostra um cabeçalho padronizado para páginas do EV Care.
+    """
+    st.header(titulo)
+
+    if descricao:
+        st.caption(descricao)
+
+    st.divider()
+
+
+def mostrar_aviso_recurso_plus(nome_recurso):
+    """
+    Mostra aviso padronizado para recursos Plus bloqueados.
+    """
+    exibir_bloqueio_plus(nome_recurso)
+
+
+def mostrar_estado_vazio(titulo, mensagem):
+    """
+    Mostra uma mensagem padronizada para telas sem dados.
+    """
+    with st.container(border=True):
+        st.write(f"### {titulo}")
+        st.info(mensagem)
+
 
 
 
@@ -1174,7 +1201,10 @@ else:
 # =============================================================================
 
 if pagina == "Dashboard":
-    st.header("Dashboard")
+    mostrar_cabecalho_pagina(
+        "Dashboard",
+        "Resumo geral do veículo, recargas, custos e manutenções."
+    )
 
     if not validar_contexto_online("Dashboard"):
         st.stop()
@@ -1681,7 +1711,10 @@ if pagina == "Dashboard":
 # =============================================================================
 
 elif pagina == "Quilometragem":
-    st.header("Quilometragem")
+    mostrar_cabecalho_pagina(
+        "Quilometragem",
+        "Atualize e acompanhe o histórico de quilometragem do veículo."
+    )
 
     if not validar_contexto_online("Quilometragem"):
         st.stop()
@@ -1819,7 +1852,10 @@ elif pagina == "Quilometragem":
 # =============================================================================
 
 elif pagina == "Recargas":
-    st.header("Recargas")
+    mostrar_cabecalho_pagina(
+        "Recargas",
+        "Registre recargas, acompanhe custos e exporte seus dados."
+    )
 
     if not validar_contexto_online("Recargas"):
         st.stop()
@@ -2224,7 +2260,10 @@ elif pagina == "Recargas":
 # =============================================================================
 
 elif pagina == "Manutenções":
-    st.header("Manutenções")
+    mostrar_cabecalho_pagina(
+        "Manutenções",
+        "Acompanhe serviços, prazos e histórico de manutenção."
+    )
 
     if not validar_contexto_online("Manutenções"):
         st.stop()
@@ -2694,7 +2733,10 @@ elif pagina == "Manutenções":
 # =============================================================================
 
 elif pagina == "Viagens":
-    st.header("Planejar Viagem")
+    mostrar_cabecalho_pagina(
+        "Planejar Viagem",
+        "Simule autonomia, energia necessária e custo estimado da viagem."
+    )
 
     if not veiculo_ativo:
         st.warning("Selecione ou cadastre um veículo antes de planejar viagens.")
@@ -2773,7 +2815,10 @@ elif pagina == "Viagens":
 # =============================================================================
 
 elif pagina == "Custos e Economia":
-    st.header("Custos e Economia")
+    mostrar_cabecalho_pagina(
+        "Custos e Economia",
+        "Compare custos, consumo e economia do veículo elétrico."
+    )
 
     if not validar_contexto_online("Custos e Economia"):
         st.stop()
@@ -2893,7 +2938,10 @@ elif pagina == "Custos e Economia":
 # =============================================================================
 
 elif pagina == "Histórico":
-    st.header("Histórico")
+    mostrar_cabecalho_pagina(
+        "Histórico",
+        "Consulte registros de quilometragem, recargas e manutenções."
+    )
 
     if not validar_contexto_online("Histórico"):
         st.stop()
@@ -3006,7 +3054,10 @@ elif pagina == "Histórico":
 # =============================================================================
 
 elif pagina == "Planos":
-    st.header("Planos do EV Care")
+    mostrar_cabecalho_pagina(
+        "Planos do EV Care",
+        "Escolha o plano ideal para acompanhar seu veículo elétrico."
+    )
 
     st.write(
         "O EV Care está em fase Beta e atualmente pode ser usado gratuitamente. "
@@ -3129,8 +3180,10 @@ elif pagina == "Planos":
 # =============================================================================
 
 elif pagina == "Feedback":
-    st.header("Feedback do EV Care")
-
+    mostrar_cabecalho_pagina(
+        "Feedback do EV Care",
+        "Envie sugestões e ajude a melhorar o aplicativo."
+    )
     st.write(
         "O EV Care está em fase Beta. Seu feedback ajuda a melhorar o aplicativo "
         "e a definir quais recursos devem ser priorizados nas próximas versões."
@@ -3209,7 +3262,10 @@ elif pagina == "Feedback":
 # =============================================================================
 
 elif pagina == "Conta":
-    st.header("Conta")
+    mostrar_cabecalho_pagina(
+        "Conta",
+        "Acesse sua conta, plano e informações de assinatura."
+    )
 
     if st.session_state.auth_logado:
         st.success("Usuário logado")
@@ -3282,8 +3338,13 @@ elif pagina == "Conta":
 # MINHA GARAGEM
 # =============================================================================
 
+
 elif pagina == "Minha Garagem":
-    st.header("Minha Garagem")
+    mostrar_cabecalho_pagina(
+        "Minha Garagem",
+        "Gerencie os veículos vinculados à sua conta."
+    )
+
 
     if not st.session_state.auth_logado:
         st.warning("Faça login na página Conta para usar a Minha Garagem.")
@@ -3506,7 +3567,10 @@ elif pagina == "Minha Garagem":
                                 st.write(resposta)
 
 elif pagina == "Configurações":
-    st.header("Configurações")
+    mostrar_cabecalho_pagina(
+        "Configurações",
+        "Visualize informações gerais da conta e dos dados do aplicativo."
+    )
 
     st.subheader("Conta")
 
