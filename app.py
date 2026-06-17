@@ -2002,7 +2002,7 @@ elif pagina == "Recargas":
 
     veiculo_ativo = obter_veiculo_ativo()
 
-    st.caption("Registre e acompanhe suas recargas, custos e histórico de carregamento.")
+
     with st.container(border=True):
         st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
         st.caption("Veículo ativo para registro e acompanhamento de recargas.")
