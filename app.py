@@ -3947,7 +3947,11 @@ elif pagina == "Minha Garagem":
 
                     veiculo_catalogo = versoes_catalogo[indice_versao_catalogo]
 
-                    st.subheader("Dados de referência da versão")
+                    st.subheader("Dados de referência da versão selecionada")
+                    st.caption(
+                        "Esses dados ajudam a preencher automaticamente bateria e consumo. "
+                        "Eles podem variar conforme versão, ano/modelo e ciclo de medição."
+                    )
 
                     col_cat1, col_cat2, col_cat3 = st.columns(3)
 
@@ -3989,13 +3993,30 @@ elif pagina == "Minha Garagem":
                         tracao = veiculo_catalogo.get("tracao") or "Não informada"
                         st.metric("Tração", tracao)
 
-                    if veiculo_catalogo.get("observacao"):
-                        st.caption(veiculo_catalogo.get("observacao"))
-
                     status_validacao = veiculo_catalogo.get("status_validacao")
 
-                    if status_validacao:
-                        st.caption(f"Status dos dados: {status_validacao}")
+                    if status_validacao == "validado_oficial":
+                        st.success("Dados técnicos validados por fonte oficial.")
+                    elif status_validacao == "validado_parcialmente":
+                        st.info(
+                            "Dados técnicos validados parcialmente. Confira a versão e o ano do veículo."
+                        )
+                    elif status_validacao == "referencia_inicial":
+                        st.warning(
+                            "Dados técnicos de referência inicial. Podem variar conforme versão, ano/modelo e ciclo de medição."
+                        )
+                    else:
+                        st.caption(
+                            "Dados técnicos em validação. Use como referência inicial."
+                        )
+
+                    if veiculo_catalogo.get("fonte_tecnica"):
+                        st.caption(
+                            f"Fonte técnica: {veiculo_catalogo.get('fonte_tecnica')}"
+                        )
+
+                    if veiculo_catalogo.get("observacao"):
+                        st.caption(veiculo_catalogo.get("observacao"))
 
                     with st.form("form_adicionar_veiculo_catalogo"):
                         km_catalogo = st.number_input(
