@@ -40,6 +40,7 @@ from plano_helpers import (
     mensagem_recurso_plus,
     usuario_plus_ativo
 )
+from termos_db import registrar_aceite_termos
 
 from veiculos_db import (
     listar_veiculos_usuario,
@@ -4228,11 +4229,43 @@ elif pagina == "Conta":
 
             st.caption("Use uma senha com pelo menos 6 caracteres.")
 
+            with st.expander("Ver resumo dos Termos de Uso e da Política de Privacidade"):
+                st.markdown(
+                    """
+                    Ao criar uma conta no EV Care, você concorda que o aplicativo poderá
+                    armazenar dados como nome, e-mail, veículos cadastrados, quilometragem,
+                    recargas, manutenções, feedbacks e informações de plano.
+
+                    Esses dados são usados para funcionamento do app, separação por conta,
+                    cálculos, relatórios, exportações e melhoria do produto.
+
+                    As estimativas do EV Care não substituem o manual do veículo,
+                    recomendações do fabricante ou avaliação técnica profissional.
+
+                    Evite inserir senhas, documentos, dados bancários ou informações
+                    sensíveis em campos de observação ou feedback.
+                    """
+                )
+
+                st.caption(
+                    "As versões completas ficam documentadas nos arquivos PRIVACIDADE.md e TERMOS_DE_USO.md."
+                )
+
+            aceitou_termos = st.checkbox(
+                "Li e aceito os Termos de Uso e a Política de Privacidade.",
+                key="cadastro_aceite_termos"
+            )
+
             if st.button("Criar conta"):
                 if not email_cadastro or not senha_cadastro:
                     st.warning("Informe e-mail e senha.")
                 elif len(senha_cadastro) < 6:
                     st.warning("A senha deve ter pelo menos 6 caracteres.")
+                elif not aceitou_termos:
+                    st.warning(
+                        "Para criar sua conta, marque o quadro de aceite dos Termos de Uso "
+                        "e da Política de Privacidade."
+                    )
                 else:
                     ok, mensagem = criar_conta(
                         email_cadastro,
@@ -4241,6 +4274,17 @@ elif pagina == "Conta":
                     )
 
                     if ok:
+                        if st.session_state.get("auth_user_id"):
+                            ok_termos, resposta_termos = registrar_aceite_termos(
+                                st.session_state.auth_user_id
+                            )
+
+                            if not ok_termos:
+                                st.warning(
+                                    "Conta criada, mas não foi possível registrar o aceite dos termos."
+                                )
+                                st.write(resposta_termos)
+
                         st.success(mensagem)
 
                         if st.session_state.get("auth_logado", False):
