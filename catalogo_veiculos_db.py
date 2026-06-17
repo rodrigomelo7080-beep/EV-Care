@@ -29,9 +29,67 @@ def listar_marcas_catalogo():
         return [], str(erro)
 
 
+def listar_modelos_por_marca_catalogo(marca):
+    """
+    Lista modelos únicos ativos de uma marca no catálogo.
+    """
+    cliente, erro = criar_cliente_supabase_autenticado()
+
+    if erro:
+        return [], erro
+
+    try:
+        resposta = (
+            cliente
+            .table("catalogo_veiculos_ev")
+            .select("modelo")
+            .eq("ativo", True)
+            .eq("marca", marca)
+            .order("modelo")
+            .execute()
+        )
+
+        dados = resposta.data or []
+        modelos = sorted({item.get("modelo") for item in dados if item.get("modelo")})
+
+        return modelos, None
+
+    except Exception as erro:
+        return [], str(erro)
+
+
+def listar_versoes_catalogo(marca, modelo):
+    """
+    Lista versões ativas de um modelo específico no catálogo.
+    """
+    cliente, erro = criar_cliente_supabase_autenticado()
+
+    if erro:
+        return [], erro
+
+    try:
+        resposta = (
+            cliente
+            .table("catalogo_veiculos_ev")
+            .select("*")
+            .eq("ativo", True)
+            .eq("marca", marca)
+            .eq("modelo", modelo)
+            .order("ano_modelo", desc=True)
+            .order("versao")
+            .execute()
+        )
+
+        return resposta.data or [], None
+
+    except Exception as erro:
+        return [], str(erro)
+
+
 def listar_modelos_catalogo(marca):
     """
-    Lista modelos ativos do catálogo para uma marca.
+    Mantido por compatibilidade.
+    Lista todas as linhas ativas do catálogo para uma marca.
     """
     cliente, erro = criar_cliente_supabase_autenticado()
 
@@ -57,7 +115,7 @@ def listar_modelos_catalogo(marca):
 
 def buscar_veiculo_catalogo(catalogo_id):
     """
-    Busca um veículo específico do catálogo.
+    Busca uma versão específica do catálogo.
     """
     cliente, erro = criar_cliente_supabase_autenticado()
 

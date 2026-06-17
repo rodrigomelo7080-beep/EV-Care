@@ -17,6 +17,8 @@ from reportlab.platypus import (
 )
 from catalogo_veiculos_db import (
     listar_marcas_catalogo,
+    listar_modelos_por_marca_catalogo,
+    listar_versoes_catalogo,
     listar_modelos_catalogo,
     buscar_veiculo_catalogo
 )
@@ -3835,6 +3837,246 @@ elif pagina == "Minha Garagem":
                             else:
                                 st.error("Não foi possível cadastrar o veículo.")
                                 st.write(resposta)
+
+                st.divider()
+
+    mostrar_bloco_secao(
+        "Adicionar veículo pelo catálogo",
+        "Escolha marca, modelo e versão para preencher automaticamente bateria, consumo e autonomia de referência."
+    )
+
+    quantidade_catalogo, erro_quantidade_catalogo = contar_veiculos_usuario()
+
+    if erro_quantidade_catalogo:
+        st.error("Não foi possível verificar o limite de veículos.")
+        st.write(erro_quantidade_catalogo)
+        quantidade_catalogo = 0
+
+    pode_criar_catalogo, mensagem_bloqueio_catalogo = pode_criar_veiculo(
+        quantidade_catalogo
+    )
+
+    if not pode_criar_catalogo:
+        st.warning(mensagem_bloqueio_catalogo)
+        st.caption("Para cadastrar mais veículos, use uma conta Plus ativa.")
+    else:
+        marcas_catalogo, erro_marcas = listar_marcas_catalogo()
+
+        if erro_marcas:
+            st.error("Não foi possível carregar as marcas do catálogo.")
+            st.write(erro_marcas)
+
+        elif not marcas_catalogo:
+            st.info("Nenhuma marca disponível no catálogo no momento.")
+
+        else:
+            marca_catalogo = st.selectbox(
+                "Marca",
+                marcas_catalogo,
+                key="catalogo_ev_marca"
+            )
+
+            modelos_catalogo, erro_modelos = listar_modelos_por_marca_catalogo(
+                marca_catalogo
+            )
+
+            if erro_modelos:
+                st.error("Não foi possível carregar os modelos do catálogo.")
+                st.write(erro_modelos)
+
+            elif not modelos_catalogo:
+                st.info("Nenhum modelo disponível para esta marca.")
+
+            else:
+                modelo_catalogo = st.selectbox(
+                    "Modelo",
+                    modelos_catalogo,
+                    key="catalogo_ev_modelo_base"
+                )
+
+                versoes_catalogo, erro_versoes = listar_versoes_catalogo(
+                    marca_catalogo,
+                    modelo_catalogo
+                )
+
+                if erro_versoes:
+                    st.error("Não foi possível carregar as versões do catálogo.")
+                    st.write(erro_versoes)
+
+                elif not versoes_catalogo:
+                    st.info("Nenhuma versão disponível para este modelo.")
+
+                else:
+                    def formatar_versao_catalogo(indice):
+                        item = versoes_catalogo[indice]
+
+                        versao = (
+                            item.get("versao_comercial")
+                            or item.get("versao")
+                            or "Versão de referência"
+                        )
+
+                        ano_modelo = item.get("ano_modelo")
+                        bateria = item.get("bateria_kwh")
+                        autonomia = item.get("autonomia_referencia_km")
+
+                        detalhes = []
+
+                        if ano_modelo:
+                            detalhes.append(f"Ano {ano_modelo}")
+
+                        if bateria is not None:
+                            detalhes.append(f"{float(bateria):.1f} kWh")
+
+                        if autonomia is not None:
+                            detalhes.append(f"{int(autonomia)} km ref.")
+
+                        detalhes_txt = " | ".join(detalhes)
+
+                        if detalhes_txt:
+                            return f"{versao} ({detalhes_txt})"
+
+                        return versao
+
+                    indice_versao_catalogo = st.selectbox(
+                        "Versão",
+                        range(len(versoes_catalogo)),
+                        format_func=formatar_versao_catalogo,
+                        key="catalogo_ev_versao"
+                    )
+
+                    veiculo_catalogo = versoes_catalogo[indice_versao_catalogo]
+
+                    st.subheader("Dados de referência da versão")
+
+                    col_cat1, col_cat2, col_cat3 = st.columns(3)
+
+                    with col_cat1:
+                        st.metric(
+                            "Bateria",
+                            f"{float(veiculo_catalogo.get('bateria_kwh') or 0):.1f} kWh"
+                        )
+
+                    with col_cat2:
+                        st.metric(
+                            "Consumo ref.",
+                            f"{float(veiculo_catalogo.get('consumo_km_kwh') or 0):.2f} km/kWh"
+                        )
+
+                    with col_cat3:
+                        st.metric(
+                            "Autonomia ref.",
+                            f"{int(veiculo_catalogo.get('autonomia_referencia_km') or 0)} km"
+                        )
+
+                    col_cat4, col_cat5, col_cat6 = st.columns(3)
+
+                    with col_cat4:
+                        valor_inmetro = veiculo_catalogo.get("autonomia_inmetro_km")
+                        st.metric(
+                            "Autonomia Inmetro",
+                            f"{int(valor_inmetro)} km" if valor_inmetro else "Não informada"
+                        )
+
+                    with col_cat5:
+                        bateria_util = veiculo_catalogo.get("bateria_util_kwh")
+                        st.metric(
+                            "Bateria útil",
+                            f"{float(bateria_util):.1f} kWh" if bateria_util else "Não informada"
+                        )
+
+                    with col_cat6:
+                        tracao = veiculo_catalogo.get("tracao") or "Não informada"
+                        st.metric("Tração", tracao)
+
+                    if veiculo_catalogo.get("observacao"):
+                        st.caption(veiculo_catalogo.get("observacao"))
+
+                    status_validacao = veiculo_catalogo.get("status_validacao")
+
+                    if status_validacao:
+                        st.caption(f"Status dos dados: {status_validacao}")
+
+                    with st.form("form_adicionar_veiculo_catalogo"):
+                        km_catalogo = st.number_input(
+                            "KM atual",
+                            min_value=0,
+                            step=100,
+                            value=0,
+                            key="catalogo_ev_km_atual"
+                        )
+
+                        confirmar_catalogo = st.form_submit_button(
+                            "Cadastrar veículo pelo catálogo"
+                        )
+
+                        if confirmar_catalogo:
+                            bateria_kwh = float(
+                                veiculo_catalogo.get("bateria_kwh") or 0
+                            )
+
+                            consumo_km_kwh = float(
+                                veiculo_catalogo.get("consumo_km_kwh") or 0
+                            )
+
+                            if bateria_kwh <= 0 or consumo_km_kwh <= 0:
+                                st.error(
+                                    "Esta versão ainda não possui dados técnicos suficientes. "
+                                    "Use o cadastro manual ou revise o catálogo."
+                                )
+                            else:
+                                versao_escolhida = (
+                                    veiculo_catalogo.get("versao_comercial")
+                                    or veiculo_catalogo.get("versao")
+                                    or "Referência"
+                                )
+
+                                modelo_completo = (
+                                    f"{veiculo_catalogo.get('modelo', '').strip().upper()} "
+                                    f"{str(versao_escolhida).strip().upper()}"
+                                ).strip()
+
+                                ok, resposta = criar_veiculo_online(
+                                    user_id=st.session_state.auth_user_id,
+                                    marca=veiculo_catalogo.get("marca", "").strip().upper(),
+                                    modelo=modelo_completo,
+                                    km_atual=km_catalogo,
+                                    bateria_kwh=bateria_kwh,
+                                    consumo_km_kwh=consumo_km_kwh,
+                                    dados_tecnicos={
+                                        "origem": "catalogo_veiculos_ev",
+                                        "catalogo_id": veiculo_catalogo.get("id"),
+                                        "marca_catalogo": veiculo_catalogo.get("marca"),
+                                        "modelo_catalogo": veiculo_catalogo.get("modelo"),
+                                        "versao": versao_escolhida,
+                                        "ano_modelo": veiculo_catalogo.get("ano_modelo"),
+                                        "bateria_nominal_kwh": veiculo_catalogo.get("bateria_nominal_kwh"),
+                                        "bateria_util_kwh": veiculo_catalogo.get("bateria_util_kwh"),
+                                        "autonomia_referencia_km": veiculo_catalogo.get("autonomia_referencia_km"),
+                                        "autonomia_inmetro_km": veiculo_catalogo.get("autonomia_inmetro_km"),
+                                        "autonomia_wltp_km": veiculo_catalogo.get("autonomia_wltp_km"),
+                                        "consumo_inmetro_kwh_100km": veiculo_catalogo.get("consumo_inmetro_kwh_100km"),
+                                        "potencia_cv": veiculo_catalogo.get("potencia_cv"),
+                                        "tracao": veiculo_catalogo.get("tracao"),
+                                        "fonte_ranking": veiculo_catalogo.get("fonte_ranking"),
+                                        "fonte_tecnica": veiculo_catalogo.get("fonte_tecnica"),
+                                        "fonte_url": veiculo_catalogo.get("fonte_url"),
+                                        "status_validacao": veiculo_catalogo.get("status_validacao"),
+                                        "observacao_catalogo": veiculo_catalogo.get("observacao"),
+                                        "plano_usuario": obter_plano_usuario()
+                                    },
+                                    veiculo_ativo=(quantidade_catalogo == 0)
+                                )
+
+                                if ok:
+                                    st.success("Veículo cadastrado com sucesso pelo catálogo.")
+                                    carregar_veiculo_online_ativo_para_app()
+                                    st.rerun()
+                                else:
+                                    st.error("Não foi possível cadastrar o veículo.")
+                                    st.write(resposta)
+
+                                    st.divider()
 
 # =============================================================================
 # CONTA
