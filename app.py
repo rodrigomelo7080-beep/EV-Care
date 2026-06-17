@@ -3393,11 +3393,6 @@ elif pagina == "Conhecimento EV":
 
     st.divider()
 
-    st.caption(
-        "Os conteúdos desta página podem ser atualizados pelo banco de dados, "
-        "sem necessidade de alterar o código do aplicativo."
-    )
-
 
 # =============================================================================
 # PLANOS
