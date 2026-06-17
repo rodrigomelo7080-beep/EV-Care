@@ -1657,8 +1657,28 @@ elif pagina == "Recargas":
     veiculo_ativo = obter_veiculo_ativo()
 
     st.caption("Registre e acompanhe suas recargas, custos e histórico de carregamento.")
-    st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
+    with st.container(border=True):
+        st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
+        st.caption("Veículo ativo para registro e acompanhamento de recargas.")
 
+        col_v1, col_v2, col_v3 = st.columns(3)
+
+        with col_v1:
+            st.metric("KM atual", formatar_km(veiculo_ativo.km_atual))
+
+        with col_v2:
+            st.metric(
+                "Autonomia estimada",
+                f"{veiculo_ativo.calcular_autonomia():.0f} km"
+            )
+
+        with col_v3:
+            st.metric(
+                "Saúde da bateria",
+                f"{veiculo_ativo.calcular_saude_bateria():.2f}%"
+            )
+
+    st.divider()
     tab1, tab2, tab3 = st.tabs(
         [
             "Registrar recarga",
@@ -1671,8 +1691,10 @@ elif pagina == "Recargas":
     # REGISTRAR RECARGA ONLINE
     # -------------------------------------------------------------------------
     with tab1:
-        st.subheader("Registrar nova recarga")
-
+        mostrar_bloco_secao(
+            "Registrar nova recarga",
+            "Informe os dados da recarga para acompanhar custos, energia e histórico."
+        )
         with st.form("form_registrar_recarga_online"):
             bateria_inicial = st.number_input(
                 "Bateria inicial (%)",
@@ -1762,7 +1784,10 @@ elif pagina == "Recargas":
     # HISTÓRICO, EDITAR E EXCLUIR ONLINE
     # -------------------------------------------------------------------------
     with tab2:
-        st.subheader("Histórico de recargas online")
+        mostrar_bloco_secao(
+            "Histórico de recargas",
+            "Consulte, edite ou remova registros de recarga do veículo."
+        )
 
         recargas_online, erro_recargas = listar_recargas_online(
             veiculo_ativo.id_online
@@ -1949,7 +1974,10 @@ elif pagina == "Recargas":
     # RESUMO ONLINE
     # -------------------------------------------------------------------------
     with tab3:
-        st.subheader("Resumo de recargas")
+        mostrar_bloco_secao(
+            "Resumo de recargas",
+            "Veja indicadores consolidados de energia, custo e consumo."
+        )
 
         resumo, erro_resumo = obter_resumo_recargas_online(
             veiculo_id=veiculo_ativo.id_online,
@@ -2011,7 +2039,10 @@ elif pagina == "Recargas":
     
         st.divider()
 
-        st.subheader("Exportação de recargas")
+        mostrar_bloco_secao(
+            "Exportação de recargas",
+            "Usuários Plus podem baixar os registros em CSV para análise em planilhas."
+        )
 
         if recurso_disponivel("exportacao_excel"):
             recargas_para_exportar, erro_exportacao = listar_recargas_online(
@@ -2064,10 +2095,29 @@ elif pagina == "Manutenções":
 
     veiculo_ativo = obter_veiculo_ativo()
 
-    st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
-    st.write(f"KM atual: **{veiculo_ativo.km_atual} km**")
+    with st.container(border=True):
+        st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
+        st.caption("Veículo ativo para controle de plano e histórico de manutenção.")
+
+        col_v1, col_v2, col_v3 = st.columns(3)
+
+        with col_v1:
+            st.metric("KM atual", formatar_km(veiculo_ativo.km_atual))
+
+        with col_v2:
+            st.metric(
+                "Autonomia estimada",
+                f"{veiculo_ativo.calcular_autonomia():.0f} km"
+            )
+
+        with col_v3:
+            st.metric(
+                "Saúde da bateria",
+                f"{veiculo_ativo.calcular_saude_bateria():.2f}%"
+            )
 
     st.divider()
+
 
     servicos_online, erro_servicos = listar_servicos_manutencao_online(
         veiculo_ativo.id_online
@@ -2116,7 +2166,10 @@ elif pagina == "Manutenções":
     # PAINEL
     # -------------------------------------------------------------------------
     with tab1:
-        st.subheader("Painel de manutenção")
+        mostrar_bloco_secao(
+            "Painel de manutenção",
+            "Acompanhe serviços vencidos, próximos e em dia."
+        )
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -2166,17 +2219,20 @@ elif pagina == "Manutenções":
                         st.caption(dados["descricao"])
 
                     if dados["status"] == "Vencido":
-                        st.error("Manutenção vencida.")
+                        st.error("Status: Vencido")
                     elif dados["status"] == "Próximo":
-                        st.warning("Manutenção próxima.")
+                        st.warning("Status: Próximo")
                     else:
-                        st.success("Manutenção em dia.")
+                        st.success("Status: Em dia")
 
     # -------------------------------------------------------------------------
     # REGISTRAR MANUTENÇÃO
     # -------------------------------------------------------------------------
     with tab2:
-        st.subheader("Registrar manutenção realizada")
+        mostrar_bloco_secao(
+            "Registrar manutenção realizada",
+            "Lance serviços concluídos para atualizar automaticamente os próximos prazos."
+        )
 
         servicos_ativos = resumo_manutencao["servicos"]
 
@@ -2241,7 +2297,10 @@ elif pagina == "Manutenções":
     # PLANO MANUAL
     # -------------------------------------------------------------------------
     with tab3:
-        st.subheader("Plano manual de manutenção")
+        mostrar_bloco_secao(
+            "Plano manual de manutenção",
+            "Adicione, edite ou remova serviços personalizados do plano do veículo."
+        )
 
         subtab1, subtab2, subtab3 = st.tabs(
             [
@@ -2461,7 +2520,10 @@ elif pagina == "Manutenções":
     # HISTÓRICO
     # -------------------------------------------------------------------------
     with tab4:
-        st.subheader("Histórico de manutenções")
+        mostrar_bloco_secao(
+            "Histórico de manutenções",
+            "Consulte os serviços já realizados neste veículo."
+        )
 
         historico_manutencoes, erro_historico = listar_manutencoes_online(
             veiculo_ativo.id_online
@@ -2484,7 +2546,10 @@ elif pagina == "Manutenções":
         
         st.divider()
 
-        st.subheader("Exportação de manutenções")
+        mostrar_bloco_secao(
+            "Exportação de manutenções",
+            "Usuários Plus podem baixar o histórico em CSV para análise externa."
+        )
 
         if recurso_disponivel("exportacao_excel"):
             historico_exportacao, erro_exportacao = listar_manutencoes_online(
@@ -3080,6 +3145,12 @@ elif pagina == "Minha Garagem":
         "Gerencie os veículos vinculados à sua conta."
     )
 
+    st.info(
+        "Cadastre e gerencie os veículos vinculados à sua conta. "
+        "O veículo ativo será usado nas páginas de quilometragem, recargas, "
+        "manutenções, custos e relatórios."
+    )
+
 
     if not st.session_state.auth_logado:
         st.warning("Faça login na página Conta para usar a Minha Garagem.")
@@ -3116,7 +3187,10 @@ elif pagina == "Minha Garagem":
 
             st.divider()
 
-            st.subheader("Veículos cadastrados na nuvem")
+            mostrar_bloco_secao(
+            "Veículos cadastrados",
+            "Veja os veículos da sua conta e escolha qual será usado como ativo."
+            )
 
             if not veiculos_online:
                 st.info("Nenhum veículo online cadastrado ainda.")
@@ -3243,12 +3317,18 @@ elif pagina == "Minha Garagem":
                                             st.error("Não foi possível atualizar o veículo online.")
                                             st.write(resposta)
 
-            st.subheader("Cadastrar veículo online")
+            mostrar_bloco_secao(
+            "Cadastrar veículo",
+            "Adicione um veículo para começar a registrar quilometragem, recargas e manutenções."
+            )
 
             pode_criar, mensagem_bloqueio = pode_criar_veiculo(quantidade)
 
             if not pode_criar:
                 st.warning(mensagem_bloqueio)
+                st.caption(
+                    "Para cadastrar mais veículos, use uma conta Plus ativa."
+                )
             else:
                 with st.form("form_garagem_online"):
                     marca_online = st.text_input("Marca")
