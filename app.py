@@ -1516,28 +1516,33 @@ elif pagina == "Quilometragem":
     veiculo_ativo = obter_veiculo_ativo()
 
 
-    st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
+    with st.container(border=True):
+        st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
+        st.caption("Veículo ativo para atualização e acompanhamento de quilometragem.")
 
-    col1, col2, col3 = st.columns(3)
+        col1, col2, col3 = st.columns(3)
 
-    with col1:
-        st.metric("KM atual", f"{veiculo_ativo.km_atual} km")
+        with col1:
+            st.metric("KM atual", formatar_km(veiculo_ativo.km_atual))
 
-    with col2:
-        st.metric(
-            "Autonomia estimada",
-            f"{veiculo_ativo.calcular_autonomia():.0f} km"
-        )
+        with col2:
+            st.metric(
+                "Autonomia estimada",
+                f"{veiculo_ativo.calcular_autonomia():.0f} km"
+            )
 
-    with col3:
-        st.metric(
-            "Saúde estimada da bateria",
-            f"{veiculo_ativo.calcular_saude_bateria():.2f}%"
-        )
+        with col3:
+            st.metric(
+                "Saúde estimada da bateria",
+                f"{veiculo_ativo.calcular_saude_bateria():.2f}%"
+            )
 
     st.divider()
 
-    st.subheader("Atualizar quilometragem")
+    mostrar_bloco_secao(
+        "Atualizar quilometragem",
+        "Informe a nova quilometragem para manter custos, histórico e manutenções atualizados."
+    )
 
     with st.form("form_atualizar_quilometragem_online"):
         nova_km = st.number_input(
@@ -1578,7 +1583,10 @@ elif pagina == "Quilometragem":
 
     st.divider()
 
-    st.subheader("Histórico de quilometragem")
+    mostrar_bloco_secao(
+        "Histórico de quilometragem",
+        "Consulte as atualizações de KM registradas para este veículo."
+    )
 
     historico_online, erro_historico = listar_historico_km_online(
         veiculo_ativo.id_online
@@ -1605,7 +1613,10 @@ elif pagina == "Quilometragem":
     
     st.divider()
 
-    st.subheader("Exportação de quilometragem")
+    mostrar_bloco_secao(
+        "Exportação de quilometragem",
+        "Usuários Plus podem baixar o histórico de KM em CSV para análise em planilhas."
+    )
 
     if recurso_disponivel("exportacao_excel"):
         historico_exportacao, erro_exportacao = listar_historico_km_online(
@@ -2685,7 +2696,28 @@ elif pagina == "Custos e Economia":
     veiculo_ativo = obter_veiculo_ativo()
 
 
-    st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
+    with st.container(border=True):
+        st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
+        st.caption("Veículo ativo para análise de custos, consumo e economia.")
+
+        col_v1, col_v2, col_v3 = st.columns(3)
+
+        with col_v1:
+            st.metric("KM atual", formatar_km(veiculo_ativo.km_atual))
+
+        with col_v2:
+            st.metric(
+                "Autonomia estimada",
+                f"{veiculo_ativo.calcular_autonomia():.0f} km"
+            )
+
+        with col_v3:
+            st.metric(
+                "Consumo de referência",
+                f"{float(veiculo_ativo.info.get('Consumo', 6.0)):.2f} km/kWh"
+            )
+
+    st.divider()
 
     resumo, erro_resumo = obter_resumo_recargas_online(
         veiculo_id=veiculo_ativo.id_online,
@@ -2698,6 +2730,11 @@ elif pagina == "Custos e Economia":
         st.stop()
 
     consumo_ev = float(veiculo_ativo.info.get("Consumo", 6.0))
+
+    mostrar_bloco_secao(
+        "Parâmetros de comparação",
+        "Ajuste os valores de energia, gasolina e consumo para simular custos."
+    )
 
     estado_custos = st.selectbox(
         "Estado para preço estimado do kWh",
@@ -2726,16 +2763,30 @@ elif pagina == "Custos e Economia":
     custo_ev_km_estimado = preco_kwh / consumo_ev if consumo_ev > 0 else 0
     custo_gasolina_km = preco_gasolina / consumo_gasolina if consumo_gasolina > 0 else 0
 
+    mostrar_bloco_secao(
+        "Comparativo principal",
+        "Compare o custo estimado do veículo elétrico com um veículo a gasolina."
+    )
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("Custo/km elétrico estimado", f"R$ {custo_ev_km_estimado:.4f}")
+        mostrar_card_metrica(
+            "Custo/km elétrico estimado",
+            f"R$ {custo_ev_km_estimado:.4f}"
+        )
 
     with col2:
-        st.metric("Custo/km gasolina", f"R$ {custo_gasolina_km:.4f}")
+        mostrar_card_metrica(
+            "Custo/km gasolina",
+            f"R$ {custo_gasolina_km:.4f}"
+        )
 
     with col3:
-        st.metric("Gasto total online", f"R$ {resumo['custo_total']:.2f}")
+        mostrar_card_metrica(
+            "Gasto total em recargas",
+            formatar_moeda(resumo["custo_total"])
+        )
 
     if custo_ev_km_estimado < custo_gasolina_km:
         st.success("Pela estimativa, o veículo elétrico está mais econômico.")
@@ -2744,7 +2795,10 @@ elif pagina == "Custos e Economia":
 
     st.divider()
 
-    st.subheader("Dados reais das recargas online")
+    mostrar_bloco_secao(
+        "Dados reais das recargas",
+        "Indicadores calculados a partir das recargas registradas para o veículo."
+    )
 
     col_a, col_b, col_c = st.columns(3)
 
@@ -2772,7 +2826,10 @@ elif pagina == "Custos e Economia":
 
     st.divider()
 
-    st.subheader("Economia real aproximada")
+    mostrar_bloco_secao(
+        "Economia real aproximada",
+        "Estimativa de economia com base no custo por km do elétrico e da gasolina."
+    )
 
     if resumo["custo_real_km"] is not None:
         economia_real = (
@@ -2808,7 +2865,28 @@ elif pagina == "Histórico":
     veiculo_ativo = obter_veiculo_ativo()
 
 
-    st.write(f"Veículo ativo: **{veiculo_ativo.marca} {veiculo_ativo.modelo}**")
+    with st.container(border=True):
+        st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
+        st.caption("Histórico consolidado de quilometragem, recargas e manutenções.")
+
+        col_h1, col_h2, col_h3 = st.columns(3)
+
+        with col_h1:
+            st.metric("KM atual", formatar_km(veiculo_ativo.km_atual))
+
+        with col_h2:
+            st.metric(
+                "Autonomia estimada",
+                f"{veiculo_ativo.calcular_autonomia():.0f} km"
+            )
+
+        with col_h3:
+            st.metric(
+                "Saúde da bateria",
+                f"{veiculo_ativo.calcular_saude_bateria():.2f}%"
+            )
+
+    st.divider()
 
     tab1, tab2, tab3 = st.tabs(
         [
@@ -2822,7 +2900,10 @@ elif pagina == "Histórico":
     # HISTÓRICO ONLINE DE QUILOMETRAGEM
     # -------------------------------------------------------------------------
     with tab1:
-        st.subheader("Histórico online de quilometragem")
+        mostrar_bloco_secao(
+            "Histórico de quilometragem",
+            "Lista de atualizações de KM feitas neste veículo."
+        )
 
         historico_online, erro_historico = listar_historico_km_online(
             veiculo_ativo.id_online
@@ -2851,7 +2932,10 @@ elif pagina == "Histórico":
     # HISTÓRICO ONLINE DE RECARGAS
     # -------------------------------------------------------------------------
     with tab2:
-        st.subheader("Histórico de recargas")
+        mostrar_bloco_secao(
+            "Histórico de recargas",
+            "Lista de recargas registradas para este veículo."
+        )
 
         recargas_online, erro_recargas = listar_recargas_online(
             veiculo_ativo.id_online
@@ -2902,7 +2986,10 @@ elif pagina == "Histórico":
     # HISTÓRICO ONLINE DE MANUTENÇÕES
     # -------------------------------------------------------------------------
     with tab3:
-        st.subheader("Histórico de manutenções")
+        mostrar_bloco_secao(
+            "Histórico de manutenções",
+            "Lista de serviços de manutenção realizados neste veículo."
+        )
 
 
 # =============================================================================
