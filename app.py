@@ -3337,7 +3337,7 @@ elif pagina == "Conhecimento EV":
     )
 
     st.info(
-        "Esta página reúne conteúdos educativos carregados do banco de dados. "
+        "Esta página reúne conteúdos educativos. "
         "As informações ajudam a interpretar os indicadores do EV Care, mas não substituem "
         "o manual do veículo ou avaliação técnica profissional."
     )
@@ -3507,10 +3507,6 @@ elif pagina == "Planos":
 
     st.divider()
 
-    st.info(
-        "Durante o Beta, os planos e recursos podem evoluir com base nos testes "
-        "e feedbacks dos usuários."
-    )
 
 
 # =============================================================================
@@ -3525,10 +3521,6 @@ elif pagina == "Feedback":
 
     if not st.session_state.get("auth_logado", False):
         st.warning("Faça login na página **Conta** para enviar feedback.")
-        st.info(
-            "O feedback é vinculado à sua conta para facilitar o acompanhamento "
-            "de problemas, sugestões e melhorias."
-        )
         st.stop()
 
     tab1, tab2 = st.tabs(["Enviar feedback", "Meus feedbacks"])
@@ -4374,12 +4366,6 @@ elif pagina == "Configurações":
 
         st.divider()
 
-        st.subheader("Troca de conta")
-
-        st.info(
-            "Ao sair de uma conta e entrar em outra, o aplicativo limpa os dados "
-            "da sessão anterior para evitar mistura de informações entre usuários."
-        )
 
     # -------------------------------------------------------------------------
     # BETA
