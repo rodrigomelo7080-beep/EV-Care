@@ -3838,7 +3838,7 @@ elif pagina == "Minha Garagem":
                                 st.error("Não foi possível cadastrar o veículo.")
                                 st.write(resposta)
 
-                st.divider()
+    st.divider()
 
     mostrar_bloco_secao(
         "Adicionar veículo pelo catálogo",
