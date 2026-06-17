@@ -465,6 +465,280 @@ def gerar_pdf_resumo_veiculo(veiculo, resumo_recargas, resumo_manutencao):
     buffer.seek(0)
     return buffer.getvalue()
 
+def gerar_pdf_relatorio_mensal(veiculo, resumo_mensal, mes_nome, ano):
+    """
+    Gera um PDF com o relatório mensal do veículo.
+    Retorna bytes prontos para uso em st.download_button.
+    """
+    buffer = io.BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=2 * cm,
+        leftMargin=2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm
+    )
+
+    estilos = getSampleStyleSheet()
+    elementos = []
+
+    titulo = estilos["Title"]
+    subtitulo = estilos["Heading2"]
+    normal = estilos["BodyText"]
+
+    data_geracao = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+    elementos.append(Paragraph("EV Care — Relatório Mensal", titulo))
+    elementos.append(Spacer(1, 0.4 * cm))
+    elementos.append(Paragraph(f"Período: {escape(str(mes_nome))}/{ano}", normal))
+    elementos.append(Paragraph(f"Gerado em: {data_geracao}", normal))
+    elementos.append(Spacer(1, 0.6 * cm))
+
+    # -------------------------------------------------------------------------
+    # DADOS DO VEÍCULO
+    # -------------------------------------------------------------------------
+    elementos.append(Paragraph("Dados do veículo", subtitulo))
+
+    marca_modelo = f"{veiculo.marca} {veiculo.modelo}"
+
+    dados_veiculo = [
+        ["Veículo", Paragraph(escape(marca_modelo), normal)],
+        ["KM atual", f"{veiculo.km_atual} km"],
+        ["Autonomia estimada", f"{veiculo.calcular_autonomia():.0f} km"],
+        ["Saúde estimada da bateria", f"{veiculo.calcular_saude_bateria():.2f}%"],
+        ["Bateria", Paragraph(escape(str(veiculo.info.get("Bateria", "Não informada"))), normal)],
+        ["Consumo de referência", f"{veiculo.info.get('Consumo', 0)} km/kWh"],
+    ]
+
+    tabela_veiculo = Table(
+        dados_veiculo,
+        colWidths=[6 * cm, 9 * cm]
+    )
+
+    tabela_veiculo.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("PADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+
+    elementos.append(tabela_veiculo)
+    elementos.append(Spacer(1, 0.7 * cm))
+
+    # -------------------------------------------------------------------------
+    # RESUMO DO MÊS
+    # -------------------------------------------------------------------------
+    elementos.append(Paragraph("Resumo do mês", subtitulo))
+
+    custo_por_km = resumo_mensal.get("custo_por_km_mes")
+
+    dados_resumo = [
+        ["Recargas no mês", resumo_mensal.get("total_recargas", 0)],
+        ["Energia carregada", f"{resumo_mensal.get('energia_total', 0):.2f} kWh"],
+        ["Gasto no mês", f"R$ {resumo_mensal.get('custo_total', 0):.2f}"],
+        ["Preço médio kWh", f"R$ {resumo_mensal.get('preco_medio_kwh', 0):.2f}"],
+        ["Registros de KM", resumo_mensal.get("total_registros_km", 0)],
+        ["KM registrados no mês", f"{resumo_mensal.get('km_registrados_mes', 0)} km"],
+        ["Manutenções realizadas", resumo_mensal.get("total_manutencoes", 0)],
+        [
+            "Custo aproximado por km",
+            f"R$ {custo_por_km:.4f}" if custo_por_km is not None else "Indisponível"
+        ],
+    ]
+
+    tabela_resumo = Table(
+        dados_resumo,
+        colWidths=[7 * cm, 8 * cm]
+    )
+
+    tabela_resumo.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("PADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+
+    elementos.append(tabela_resumo)
+    elementos.append(Spacer(1, 0.7 * cm))
+
+    # -------------------------------------------------------------------------
+    # RECARGAS DO MÊS
+    # -------------------------------------------------------------------------
+    recargas_mes = resumo_mensal.get("recargas_mes", [])
+
+    elementos.append(Paragraph("Recargas do mês", subtitulo))
+
+    if recargas_mes:
+        dados_recargas = [
+            ["Data", "KM", "Energia", "Custo", "Local"]
+        ]
+
+        for recarga in recargas_mes:
+            dados_recargas.append(
+                [
+                    Paragraph(escape(str(recarga.get("data_recarga", ""))), normal),
+                    f"{recarga.get('km_atual', 0)} km",
+                    f"{float(recarga.get('energia_kwh') or 0):.2f} kWh",
+                    f"R$ {float(recarga.get('custo_total') or 0):.2f}",
+                    Paragraph(escape(str(recarga.get("local", ""))), normal),
+                ]
+            )
+
+        tabela_recargas = Table(
+            dados_recargas,
+            colWidths=[4 * cm, 3 * cm, 3 * cm, 3 * cm, 4 * cm],
+            repeatRows=1
+        )
+
+        tabela_recargas.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("PADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+
+        elementos.append(tabela_recargas)
+    else:
+        elementos.append(
+            Paragraph(
+                "Nenhuma recarga registrada no mês selecionado.",
+                normal
+            )
+        )
+
+    elementos.append(Spacer(1, 0.7 * cm))
+
+    # -------------------------------------------------------------------------
+    # QUILOMETRAGEM DO MÊS
+    # -------------------------------------------------------------------------
+    km_mes = resumo_mensal.get("km_mes", [])
+
+    elementos.append(Paragraph("Quilometragem do mês", subtitulo))
+
+    if km_mes:
+        dados_km = [
+            ["Data", "KM anterior", "Nova KM", "Diferença"]
+        ]
+
+        for registro in km_mes:
+            km_anterior = int(registro.get("km_anterior") or 0)
+            km_nova = int(registro.get("km_nova") or 0)
+            diferenca = km_nova - km_anterior
+
+            dados_km.append(
+                [
+                    Paragraph(escape(str(registro.get("data_registro", ""))), normal),
+                    f"{km_anterior} km",
+                    f"{km_nova} km",
+                    f"{diferenca} km",
+                ]
+            )
+
+        tabela_km = Table(
+            dados_km,
+            colWidths=[5 * cm, 4 * cm, 4 * cm, 4 * cm],
+            repeatRows=1
+        )
+
+        tabela_km.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("PADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+
+        elementos.append(tabela_km)
+    else:
+        elementos.append(
+            Paragraph(
+                "Nenhuma atualização de quilometragem registrada no mês selecionado.",
+                normal
+            )
+        )
+
+    elementos.append(Spacer(1, 0.7 * cm))
+
+    # -------------------------------------------------------------------------
+    # MANUTENÇÕES DO MÊS
+    # -------------------------------------------------------------------------
+    manutencoes_mes = resumo_mensal.get("manutencoes_mes", [])
+
+    elementos.append(Paragraph("Manutenções realizadas no mês", subtitulo))
+
+    if manutencoes_mes:
+        dados_manutencoes = [
+            ["Data", "Serviço", "KM", "Observação"]
+        ]
+
+        for manutencao in manutencoes_mes:
+            dados_manutencoes.append(
+                [
+                    Paragraph(escape(str(manutencao.get("data_realizada", ""))), normal),
+                    Paragraph(escape(str(manutencao.get("nome_servico", ""))), normal),
+                    f"{manutencao.get('km_realizada', 0)} km",
+                    Paragraph(escape(str(manutencao.get("observacao", ""))), normal),
+                ]
+            )
+
+        tabela_manutencoes = Table(
+            dados_manutencoes,
+            colWidths=[4 * cm, 5 * cm, 3 * cm, 5 * cm],
+            repeatRows=1
+        )
+
+        tabela_manutencoes.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("PADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+
+        elementos.append(tabela_manutencoes)
+    else:
+        elementos.append(
+            Paragraph(
+                "Nenhuma manutenção registrada no mês selecionado.",
+                normal
+            )
+        )
+
+    elementos.append(Spacer(1, 0.7 * cm))
+
+    elementos.append(
+        Paragraph(
+            "Relatório gerado pelo EV Care. Os valores são estimativas baseadas nos dados registrados pelo usuário.",
+            normal
+        )
+    )
+
+    doc.build(elementos)
+
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 def converter_data_iso_para_datetime(valor):
     """
     Converte datas vindas do Supabase para datetime.
@@ -869,11 +1143,6 @@ def mostrar_onboarding_beta():
         )
 
     st.divider()
-
-    st.info(
-        "Este é um Beta público. Algumas funcionalidades podem evoluir conforme "
-        "testes, feedbacks e melhorias do produto."
-    )
 
     st.success(
         "Fluxo recomendado: Minha Garagem → Quilometragem → Recargas → "
@@ -1508,6 +1777,42 @@ if pagina == "Dashboard":
                     "Para calcular custo por km no mês, registre recargas "
                     "e atualizações de quilometragem no mesmo período."
                 )
+
+            st.divider()
+
+            st.write("### Exportar relatório mensal")
+
+            pdf_mensal = gerar_pdf_relatorio_mensal(
+                veiculo=veiculo_ativo,
+                resumo_mensal=resumo_mensal,
+                mes_nome=meses[int(mes_relatorio)],
+                ano=int(ano_relatorio)
+                )
+
+            nome_arquivo_pdf_mensal = (
+                f"ev_care_relatorio_mensal_"
+                f"{veiculo_ativo.marca}_{veiculo_ativo.modelo}_"
+                f"{int(mes_relatorio)}_{int(ano_relatorio)}.pdf"
+            )
+
+            nome_arquivo_pdf_mensal = (
+                nome_arquivo_pdf_mensal
+                .replace(" ", "_")
+                .replace("/", "_")
+                .lower()
+            )
+
+            st.download_button(
+                label="Baixar relatório mensal em PDF",
+                data=pdf_mensal,
+                file_name=nome_arquivo_pdf_mensal,
+                mime="application/pdf"
+            )
+
+            st.caption(
+                "O PDF mensal reúne recargas, quilometragem e manutenções "
+                "do mês selecionado."
+            )
 
             if (
                 resumo_mensal["total_recargas"] == 0
