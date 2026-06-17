@@ -22,6 +22,7 @@ from catalogo_veiculos_db import (
     listar_modelos_catalogo,
     buscar_veiculo_catalogo
 )
+from conhecimento_ev_db import listar_conteudos_conhecimento_ev
 from auth_helpers import (
     inicializar_estado_auth,
     criar_conta,
@@ -1194,6 +1195,7 @@ pagina = st.sidebar.radio(
         "Viagens",
         "Custos e Economia",
         "Histórico",
+        "Conhecimento EV",
         "Planos",
         "Configurações",
         "Conta",
@@ -3323,6 +3325,78 @@ elif pagina == "Histórico":
             "Histórico de manutenções",
             "Lista de serviços de manutenção realizados neste veículo."
         )
+
+# =============================================================================
+# CONHECIMENTO EV
+# =============================================================================
+
+elif pagina == "Conhecimento EV":
+    mostrar_cabecalho_pagina(
+        "Conhecimento EV",
+        "Aprenda conceitos básicos sobre carros elétricos, recargas, bateria e autonomia."
+    )
+
+    st.info(
+        "Esta página reúne conteúdos educativos carregados do banco de dados. "
+        "As informações ajudam a interpretar os indicadores do EV Care, mas não substituem "
+        "o manual do veículo ou avaliação técnica profissional."
+    )
+
+    conteudos_ev, erro_conteudos_ev = listar_conteudos_conhecimento_ev()
+
+    if erro_conteudos_ev:
+        st.error("Não foi possível carregar os conteúdos educativos.")
+        st.write(erro_conteudos_ev)
+        st.stop()
+
+    if not conteudos_ev:
+        st.info("Nenhum conteúdo educativo disponível no momento.")
+        st.stop()
+
+    categorias = []
+
+    for item in conteudos_ev:
+        categoria = item.get("categoria")
+
+        if categoria and categoria not in categorias:
+            categorias.append(categoria)
+
+    abas = st.tabs(categorias)
+
+    for indice, categoria in enumerate(categorias):
+        with abas[indice]:
+            itens_categoria = [
+                item for item in conteudos_ev
+                if item.get("categoria") == categoria
+            ]
+
+            for item in itens_categoria:
+                titulo = item.get("titulo", "Conteúdo")
+                resumo = item.get("resumo")
+                conteudo_md = item.get("conteudo_md", "")
+                nivel = item.get("nivel", "basico")
+                fonte = item.get("fonte")
+
+                with st.container(border=True):
+                    st.write(f"### {titulo}")
+
+                    if resumo:
+                        st.caption(resumo)
+
+                    if nivel:
+                        st.caption(f"Nível: {nivel}")
+
+                    st.markdown(conteudo_md)
+
+                    if fonte:
+                        st.caption(f"Fonte/observação: {fonte}")
+
+    st.divider()
+
+    st.caption(
+        "Os conteúdos desta página podem ser atualizados pelo banco de dados, "
+        "sem necessidade de alterar o código do aplicativo."
+    )
 
 
 # =============================================================================
