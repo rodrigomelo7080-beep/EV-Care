@@ -15,6 +15,11 @@ from reportlab.platypus import (
     Table,
     TableStyle
 )
+from catalogo_veiculos_db import (
+    listar_marcas_catalogo,
+    listar_modelos_catalogo,
+    buscar_veiculo_catalogo
+)
 from auth_helpers import (
     inicializar_estado_auth,
     criar_conta,
