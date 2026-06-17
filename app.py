@@ -1049,7 +1049,7 @@ if pagina == "Dashboard":
     # ---------------------------------------------------------------------
     with st.container(border=True):
         st.subheader(f"{veiculo_ativo.marca} {veiculo_ativo.modelo}")
-        st.caption("Resumo principal do veículo ativo")
+        st.caption("Visão geral do veículo ativo")
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -1067,7 +1067,7 @@ if pagina == "Dashboard":
 
         with col3:
             st.metric(
-                "Saúde estimada da bateria",
+                "Saúde da bateria",
                 f"{saude_bateria:.2f}%"
             )
 
@@ -1077,6 +1077,7 @@ if pagina == "Dashboard":
                 resumo_recargas["total_recargas"]
             )
 
+        st.caption("Saúde estimada da bateria")
         st.progress(min(max(saude_bateria / 100, 0), 1))
 
     st.divider()
@@ -1092,39 +1093,41 @@ if pagina == "Dashboard":
     col_custo1, col_custo2, col_custo3, col_custo4 = st.columns(4)
 
     with col_custo1:
-        st.metric(
+        mostrar_card_metrica(
             "Gasto total em recargas",
-            f"R$ {resumo_recargas['custo_total']:.2f}"
+            formatar_moeda(resumo_recargas["custo_total"])
         )
 
     with col_custo2:
-        st.metric(
+        mostrar_card_metrica(
             "Energia total carregada",
-            f"{resumo_recargas['energia_total']:.2f} kWh"
+            f"{formatar_numero(resumo_recargas['energia_total'], 2)} kWh"
         )
 
     with col_custo3:
         if resumo_recargas["custo_real_km"] is not None:
-            st.metric(
+            mostrar_card_metrica(
                 "Custo real por km",
                 f"R$ {resumo_recargas['custo_real_km']:.4f}"
             )
         else:
-            st.metric(
+            mostrar_card_metrica(
                 "Custo real por km",
-                "Indisponível"
+                "Indisponível",
+                "Registre recargas e atualize a quilometragem."
             )
 
     with col_custo4:
         if resumo_recargas["consumo_real_km_kwh"] is not None:
-            st.metric(
+            mostrar_card_metrica(
                 "Consumo real",
                 f"{resumo_recargas['consumo_real_km_kwh']:.2f} km/kWh"
             )
         else:
-            st.metric(
+            mostrar_card_metrica(
                 "Consumo real",
-                "Indisponível"
+                "Indisponível",
+                "Mais dados são necessários para o cálculo."
             )
 
     if resumo_recargas["custo_real_km"] is None:
@@ -1138,7 +1141,10 @@ if pagina == "Dashboard":
     # ---------------------------------------------------------------------
     # ÚLTIMA RECARGA ONLINE
     # ---------------------------------------------------------------------
-    st.subheader("Última recarga")
+    mostrar_bloco_secao(
+        "Última recarga",
+        "Registro mais recente de carregamento do veículo."
+    )
 
     if ultima_recarga:
         col_r1, col_r2, col_r3, col_r4 = st.columns(4)
@@ -1178,7 +1184,10 @@ if pagina == "Dashboard":
     # ---------------------------------------------------------------------
     # MANUTENÇÕES E ALERTAS
     # ---------------------------------------------------------------------
-    st.subheader("Manutenções e alertas")
+    mostrar_bloco_secao(
+        "Manutenções e alertas",
+        "Acompanhe serviços vencidos, próximos e em dia."
+    )
 
     resumo_manutencao_dashboard, erro_manutencao_dashboard = obter_resumo_manutencoes_online(
         veiculo_id=veiculo_ativo.id_online,
@@ -1225,7 +1234,10 @@ if pagina == "Dashboard":
     # ---------------------------------------------------------------------
     # PRÓXIMA MANUTENÇÃO MAIS IMPORTANTE
     # ---------------------------------------------------------------------
-    st.write("### Próxima manutenção relevante")
+    mostrar_bloco_secao(
+        "Próxima manutenção relevante",
+        "Serviço mais urgente conforme quilometragem e plano de manutenção."
+    )
 
     if itens_manutencao:
         servico_mais_relevante, dados_mais_relevante = itens_manutencao[0]
@@ -1265,7 +1277,10 @@ if pagina == "Dashboard":
     # ---------------------------------------------------------------------
     # LISTA RESUMIDA DE ALERTAS
     # ---------------------------------------------------------------------
-    st.subheader("Resumo dos principais alertas")
+    mostrar_bloco_secao(
+        "Resumo dos principais alertas",
+        "Lista rápida dos alertas mais importantes no momento."
+    )
 
     if vencidos or proximos:
         for servico, dados in itens_manutencao[:5]:
@@ -1337,7 +1352,10 @@ if pagina == "Dashboard":
 
     st.divider()
 
-    st.subheader("Relatório do veículo")
+    mostrar_bloco_secao(
+        "Relatório do veículo",
+        "Usuários Plus podem baixar um PDF com o resumo do veículo."
+    )
 
     if recurso_disponivel("exportacao_pdf"):
         resumo_manutencao_pdf, erro_manutencao_pdf = obter_resumo_manutencoes_online(
@@ -1378,7 +1396,10 @@ if pagina == "Dashboard":
     
     st.divider()
 
-    st.subheader("Relatório mensal")
+    mostrar_bloco_secao(
+        "Relatório mensal",
+        "Resumo mensal de recargas, quilometragem e manutenções para usuários Plus."
+    )
 
     if recurso_disponivel("relatorios_mensais"):
         meses = {
@@ -3003,7 +3024,29 @@ elif pagina == "Planos":
     )
 
     exibir_resumo_plano()
-    mostrar_status_plano_visual()
+
+    with st.container(border=True):
+        st.subheader("Seu plano atual")
+
+        plano_atual = str(st.session_state.get("auth_plano", "free")).lower()
+        status_assinatura = str(
+            st.session_state.get("auth_status_assinatura", "inactive")
+        ).lower()
+
+        col_p1, col_p2 = st.columns(2)
+
+        with col_p1:
+            st.metric("Plano", plano_atual.upper())
+
+        with col_p2:
+            st.metric("Status", status_assinatura.upper())
+
+        if plano_atual == "plus" and status_assinatura == "active":
+            st.success("Você está com recursos Plus ativos.")
+        elif plano_atual == "plus":
+            st.warning("Seu plano está como Plus, mas a assinatura não está ativa.")
+        else:
+            st.info("Você está usando o EV Care Free.")
 
     st.divider()
 
@@ -3012,19 +3055,22 @@ elif pagina == "Planos":
     with col_free:
         with st.container(border=True):
             st.subheader("EV Care Free")
-            st.caption("Para começar a acompanhar seu veículo")
+            st.caption("Comece gratuitamente")
 
             st.markdown(
                 """
+                Ideal para acompanhar um veículo elétrico no dia a dia.
+
                 Inclui:
 
                 - 1 veículo cadastrado
-                - Quilometragem online
-                - Recargas online
-                - Manutenções online
+                - Quilometragem
+                - Recargas
+                - Manutenções
                 - Dashboard básico
-                - Histórico básico
                 - Custos e economia
+                - Histórico
+                - Envio de feedback
                 """
             )
 
@@ -3041,8 +3087,8 @@ elif pagina == "Planos":
 
                 - Veículos ilimitados
                 - Exportação CSV de recargas
-                - Exportação CSV de manutenções
                 - Exportação CSV de quilometragem
+                - Exportação CSV de manutenções
                 - Relatório PDF do veículo
                 - Relatório mensal
                 - Recursos avançados em evolução
@@ -3053,18 +3099,30 @@ elif pagina == "Planos":
 
     st.divider()
 
-    st.subheader("Recursos Plus")
+    mostrar_bloco_secao(
+        "Recursos Plus",
+        "Veja quais recursos avançados estão disponíveis ou planejados para o seu plano."
+    )
 
     recursos_plus = obter_recursos_plus()
 
     for codigo_recurso, nome_recurso in recursos_plus.items():
         with st.container(border=True):
-            st.write(f"### {nome_recurso}")
+            col_r1, col_r2 = st.columns([3, 1])
 
-            if recurso_disponivel(codigo_recurso):
-                st.success("Disponível no seu plano.")
-            else:
-                st.warning(mensagem_recurso_plus(codigo_recurso))
+            with col_r1:
+                st.write(f"### {nome_recurso}")
+
+                if recurso_disponivel(codigo_recurso):
+                    st.caption("Recurso liberado para sua conta.")
+                else:
+                    st.caption("Recurso reservado para usuários Plus ativos.")
+
+            with col_r2:
+                if recurso_disponivel(codigo_recurso):
+                    st.success("Liberado")
+                else:
+                    st.warning("Plus")
 
     st.divider()
 
