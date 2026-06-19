@@ -2092,6 +2092,29 @@ elif pagina == "Recargas":
                 step=1.0,
                 key="online_bateria_final"
             )
+            data_recarga = st.date_input(
+                    "Data da recarga",
+                    value=date.today(),
+                    key="recarga_data"
+                )
+
+            km_recarga = st.number_input(
+                    "KM atual no momento da recarga",
+                    min_value=0,
+                    step=100,
+                    value=int(veiculo_ativo.km_atual or 0),
+                    key="recarga_km_atual"
+                )
+
+            local_recarga = st.text_input(
+                    "Local da recarga",
+                    key="recarga_local"
+                )
+
+            observacao_recarga = st.text_area(
+                    "Observação",
+                    key="recarga_observacao"
+                )
 
             bateria_veiculo_kwh = obter_bateria_kwh_veiculo(veiculo_ativo)
 
