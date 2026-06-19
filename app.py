@@ -2239,32 +2239,33 @@ elif pagina == "Recargas":
             enviar_recarga = st.form_submit_button("Registrar recarga")
 
             if enviar_recarga:
-                    if energia_kwh <= 0:
-                        st.warning(
-                            "Informe uma energia carregada válida ou ajuste os percentuais "
-                            "de bateria inicial e final."
-                        )
-                    elif preco_kwh <= 0:
-                        st.warning("Informe um preço de kWh válido.")
-                    else:
-                        ok, resposta = registrar_recarga_online(
-                            veiculo_id=veiculo_ativo.id_online,
-                            data_recarga=data_recarga.isoformat(),
-                            km_atual=km_recarga,
-                            bateria_inicial=bateria_inicial_salvar,
-                            bateria_final=bateria_final_salvar,
-                            energia_kwh=energia_kwh,
-                            custo_total=custo_total,
-                            local=local_recarga,
-                            observacao=observacao_recarga
-                        )
+                  if energia_kwh <= 0:
+                      st.warning(
+                          "Informe uma energia carregada válida ou ajuste os percentuais "
+                          "de bateria inicial e final."
+                      )
+                  elif preco_kwh <= 0:
+                      st.warning("Informe um preço de kWh válido.")
+                  else:
+                      ok, resposta = registrar_recarga_online(
+                          user_id=st.session_state.auth_user_id,
+                          veiculo_id=veiculo_ativo.id_online,
+                          km_atual=km_recarga,
+                          bateria_inicial=bateria_inicial_salvar,
+                          bateria_final=bateria_final_salvar,
+                          energia_kwh=energia_kwh,
+                          preco_kwh=preco_kwh,
+                          local=local,
+                          tipo=tipo,
+                          observacao=observacao
+                      )
 
-                        if ok:
-                            st.success("Recarga registrada com sucesso.")
-                            st.rerun()
-                        else:
-                            st.error("Não foi possível registrar a recarga.")
-                            st.write(resposta)
+                      if ok:
+                          st.success("Recarga registrada com sucesso.")
+                          st.rerun()
+                      else:
+                          st.error("Não foi possível registrar a recarga.")
+                          st.write(resposta)
 
     # -------------------------------------------------------------------------
     # HISTÓRICO, EDITAR E EXCLUIR ONLINE
