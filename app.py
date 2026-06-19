@@ -2254,7 +2254,6 @@ elif pagina == "Recargas":
                             bateria_inicial=bateria_inicial_salvar,
                             bateria_final=bateria_final_salvar,
                             energia_kwh=energia_kwh,
-                            preco_kwh=preco_kwh,
                             custo_total=custo_total,
                             local=local_recarga,
                             observacao=observacao_recarga
