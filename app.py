@@ -2224,7 +2224,7 @@ elif pagina == "Recargas":
                     elif preco_kwh <= 0:
                         st.warning("Informe um preço de kWh válido.")
                     else:
-                        ok, resposta = criar_recarga_online(
+                        ok, resposta = registrar_recarga_online(
                             veiculo_id=veiculo_ativo.id_online,
                             data_recarga=data_recarga.isoformat(),
                             km_atual=km_recarga,
