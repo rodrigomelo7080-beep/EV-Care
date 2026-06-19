@@ -1032,6 +1032,8 @@ def mostrar_cabecalho_pagina(titulo, descricao=None):
 
     st.divider()
 
+
+
 def mostrar_card_metrica(titulo, valor, descricao=None):
     """
     Mostra um card visual simples para métricas e indicadores.
@@ -1158,7 +1160,39 @@ def mostrar_onboarding_beta():
         "Manutenções → Dashboard."
     )
 
+def obter_bateria_kwh_veiculo(veiculo):
+    """
+    Obtém a capacidade de bateria em kWh do veículo ativo.
+    Funciona para veículos vindos do catálogo e para veículos cadastrados manualmente,
+    desde que tenham bateria informada.
+    """
+    try:
+        bateria = veiculo.info.get("Bateria")
 
+        if bateria is None:
+            bateria = veiculo.info.get("bateria_kwh")
+
+        if bateria is None:
+            bateria = veiculo.info.get("Bateria kWh")
+
+        if isinstance(bateria, str):
+            bateria = (
+                bateria
+                .replace("kWh", "")
+                .replace("KWH", "")
+                .replace(",", ".")
+                .strip()
+            )
+
+        bateria_float = float(bateria)
+
+        if bateria_float <= 0:
+            return None
+
+        return bateria_float
+
+    except Exception:
+        return None
 
 
 
@@ -2059,12 +2093,89 @@ elif pagina == "Recargas":
                 key="online_bateria_final"
             )
 
-            energia_kwh = st.number_input(
-                "Energia carregada (kWh)",
-                min_value=0.01,
-                step=0.1,
-                key="online_energia_kwh"
-            )
+            bateria_veiculo_kwh = obter_bateria_kwh_veiculo(veiculo_ativo)
+
+            st.write("### Energia carregada")
+
+            st.caption(
+                "Informe os percentuais de bateria inicial e final para o EV Care "
+                    "estimar automaticamente a energia carregada. Se preferir, você também "
+                    "pode informar o valor exato em kWh."
+                )
+
+            usar_energia_manual = st.checkbox(
+                    "Quero informar a energia carregada manualmente",
+                    key="recarga_usar_energia_manual"
+                )
+
+            energia_kwh = 0.0
+            bateria_inicial_salvar = None
+            bateria_final_salvar = None
+
+            if usar_energia_manual or bateria_veiculo_kwh is None:
+                if bateria_veiculo_kwh is None:
+                    st.info(
+                            "Não foi possível identificar a capacidade da bateria do veículo. "
+                            "Informe a energia carregada manualmente."
+                        )
+
+                energia_kwh = st.number_input(
+                        "Energia carregada (kWh)",
+                        min_value=0.0,
+                        step=0.1,
+                        value=0.0,
+                        key="recarga_energia_manual_kwh"
+                    )
+
+                metodo_energia = "manual"
+
+            else:
+                st.caption(
+                        f"Bateria de referência do veículo: {bateria_veiculo_kwh:.1f} kWh"
+                    )
+
+                col_bat1, col_bat2 = st.columns(2)
+
+                with col_bat1:
+                    bateria_inicial = st.number_input(
+                            "Bateria inicial (%)",
+                            min_value=0,
+                            max_value=100,
+                            value=20,
+                            step=1,
+                            key="recarga_bateria_inicial_pct"
+                        )
+
+                with col_bat2:
+                    bateria_final = st.number_input(
+                            "Bateria final (%)",
+                            min_value=0,
+                            max_value=100,
+                            value=80,
+                            step=1,
+                            key="recarga_bateria_final_pct"
+                        )
+
+                if bateria_final > bateria_inicial:
+                    energia_kwh = bateria_veiculo_kwh * (
+                            (bateria_final - bateria_inicial) / 100
+                        )
+
+                    bateria_inicial_salvar = bateria_inicial
+                    bateria_final_salvar = bateria_final
+                    metodo_energia = "calculada_por_percentual"
+
+                    st.success(
+                            f"Energia estimada carregada: {energia_kwh:.2f} kWh"
+                        )
+                else:
+                    energia_kwh = 0.0
+                    metodo_energia = "calculada_por_percentual"
+
+                    st.warning(
+                            "A bateria final precisa ser maior que a bateria inicial "
+                            "para calcular a energia carregada."
+                        )
 
             preco_kwh = st.number_input(
                 "Preço do kWh (R$)",
@@ -2073,6 +2184,12 @@ elif pagina == "Recargas":
                 value=0.63,
                 key="online_preco_kwh"
             )
+
+            custo_total = energia_kwh * preco_kwh
+
+            st.info(
+                    f"Custo estimado da recarga: R$ {custo_total:.2f}"
+                )
 
             local = st.text_input(
                 "Local da recarga",
@@ -2096,36 +2213,36 @@ elif pagina == "Recargas":
                 key="online_observacao_recarga"
             )
 
-            salvar_recarga = st.form_submit_button("Registrar recarga online")
+            salvar_recarga = st.form_submit_button("Registrar recarga")
 
-            if salvar_recarga:
-                if bateria_final < bateria_inicial:
-                    st.error("A bateria final não pode ser menor que a bateria inicial.")
-                elif energia_kwh <= 0:
-                    st.error("Informe uma energia carregada maior que zero.")
-                else:
-                    ok, resposta = registrar_recarga_online(
-                        user_id=st.session_state.auth_user_id,
-                        veiculo_id=veiculo_ativo.id_online,
-                        km_atual=veiculo_ativo.km_atual,
-                        bateria_inicial=bateria_inicial,
-                        bateria_final=bateria_final,
-                        energia_kwh=energia_kwh,
-                        preco_kwh=preco_kwh,
-                        local=local,
-                        tipo=tipo,
-                        observacao=observacao
-                    )
-
-                    if ok:
-                        st.success(
-                            f"Recarga online registrada. "
-                            f"Custo total: R$ {energia_kwh * preco_kwh:.2f}"
+            if enviar_recarga:
+                    if energia_kwh <= 0:
+                        st.warning(
+                            "Informe uma energia carregada válida ou ajuste os percentuais "
+                            "de bateria inicial e final."
                         )
-                        st.rerun()
+                    elif preco_kwh <= 0:
+                        st.warning("Informe um preço de kWh válido.")
                     else:
-                        st.error("Não foi possível registrar a recarga online.")
-                        st.write(resposta)
+                        ok, resposta = criar_recarga_online(
+                            veiculo_id=veiculo_ativo.id_online,
+                            data_recarga=data_recarga.isoformat(),
+                            km_atual=km_recarga,
+                            bateria_inicial=bateria_inicial_salvar,
+                            bateria_final=bateria_final_salvar,
+                            energia_kwh=energia_kwh,
+                            preco_kwh=preco_kwh,
+                            custo_total=custo_total,
+                            local=local_recarga,
+                            observacao=observacao_recarga
+                        )
+
+                        if ok:
+                            st.success("Recarga registrada com sucesso.")
+                            st.rerun()
+                        else:
+                            st.error("Não foi possível registrar a recarga.")
+                            st.write(resposta)
 
     # -------------------------------------------------------------------------
     # HISTÓRICO, EDITAR E EXCLUIR ONLINE
