@@ -2213,7 +2213,7 @@ elif pagina == "Recargas":
                 key="online_observacao_recarga"
             )
 
-            salvar_recarga = st.form_submit_button("Registrar recarga")
+            enviar_recarga = st.form_submit_button("Registrar recarga")
 
             if enviar_recarga:
                     if energia_kwh <= 0:
