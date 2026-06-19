@@ -1,0 +1,25 @@
+[
+    {
+        "marca": "AUDI",
+        "modelo": "E-TRON",
+        "km_atual": 21658,
+        "info_tecnica": {
+            "Bateria": "95.0 kWh",
+            "Potencia": "408 cv",
+            "Torque": "664 Nm",
+            "Consumo": 4.2,
+            "Revisao": {
+                "Serviço Inspeção": 30000,
+                "Fluido Freio": 60000
+            },
+            "FatorDegradacao": 42000
+        },
+        "ultima_revisao": {
+            "Serviço Inspeção": 0,
+            "Fluido Freio": 0
+        },
+        "historico": [],
+        "historico_km": [],
+        "historico_recargas": []
+    }
+]

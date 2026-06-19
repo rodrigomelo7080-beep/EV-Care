@@ -1,0 +1,205 @@
+[
+    {
+        "marca": "GWM",
+        "modelo": "ORA 03 GT",
+        "km_atual": 482,
+        "info_tecnica": {
+            "Bateria": "63.0 kWh",
+            "Potencia": "171 cv",
+            "Torque": "250 Nm",
+            "Consumo": 6.3,
+            "Revisao": {
+                "Rodízio de Pneus": 10000,
+                "Revisão Periódica": 15000,
+                "Fluido de Freio": 30000,
+                "Inspeção de Pneus e Calibragem": 5000,
+                "Alinhamento e Balanceamento": 20000,
+                "Filtro de Cabine": 20000,
+                "Palhetas do Limpador": 12000,
+                "Inspeção de Pastilhas, Discos e Pinças": 20000,
+                "Limpeza e Lubrificação das Pinças de Freio": 20000,
+                "Revisão Geral EV": 20000,
+                "Checkup do Sistema de Alta Tensão": 20000,
+                "Inspeção da Porta de Recarga e Vedação": 20000,
+                "Inspeção da Bateria 12V": 20000,
+                "Inspeção do Sistema de Arrefecimento EV": 40000,
+                "Substituição do Líquido de Arrefecimento EV": 150000,
+                "Inspeção do Óleo do Redutor / Unidade de Tração": 60000,
+                "Atualizações de Software e Diagnóstico": 20000,
+                "Inspeção de Suspensão e Direção": 20000,
+                "Fluido do Lavador do Para-brisa": 5000
+            },
+            "FatorDegradacao": 35000,
+            "ManutencaoDetalhada": {
+                "Rodízio de Pneus": {
+                    "categoria": "Pneus e Rodagem",
+                    "intervalo_km": 10000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Alta",
+                    "descricao": "Ajuda a manter desgaste uniforme, autonomia e segurança."
+                },
+                "Inspeção de Pneus e Calibragem": {
+                    "categoria": "Pneus e Rodagem",
+                    "intervalo_km": 5000,
+                    "intervalo_meses": 1,
+                    "criticidade": "Alta",
+                    "descricao": "Verificar pressão, desgaste irregular, bolhas, cortes e profundidade dos sulcos."
+                },
+                "Alinhamento e Balanceamento": {
+                    "categoria": "Pneus e Rodagem",
+                    "intervalo_km": 20000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Média",
+                    "descricao": "Recomendado quando houver desgaste irregular, vibração ou direção puxando."
+                },
+                "Filtro de Cabine": {
+                    "categoria": "Conforto e Ar-condicionado",
+                    "intervalo_km": 20000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Média",
+                    "descricao": "Mantém qualidade do ar interno e eficiência do sistema de climatização."
+                },
+                "Palhetas do Limpador": {
+                    "categoria": "Visibilidade e Segurança",
+                    "intervalo_km": 12000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Média",
+                    "descricao": "Substituir se houver ruído, falhas de limpeza ou ressecamento."
+                },
+                "Fluido de Freio": {
+                    "categoria": "Freios",
+                    "intervalo_km": 40000,
+                    "intervalo_meses": 24,
+                    "criticidade": "Alta",
+                    "descricao": "Fluido higroscópico; deve ser verificado/substituído conforme contaminação e prazo."
+                },
+                "Inspeção de Pastilhas, Discos e Pinças": {
+                    "categoria": "Freios",
+                    "intervalo_km": 20000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Alta",
+                    "descricao": "Regeneração reduz desgaste, mas o sistema físico ainda precisa inspeção."
+                },
+                "Limpeza e Lubrificação das Pinças de Freio": {
+                    "categoria": "Freios",
+                    "intervalo_km": 20000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Média",
+                    "descricao": "Importante em regiões úmidas, litorâneas ou com corrosão."
+                },
+                "Revisão Geral EV": {
+                    "categoria": "Inspeção Geral",
+                    "intervalo_km": 20000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Alta",
+                    "descricao": "Inspeção geral de segurança, suspensão, direção, luzes, fluidos e sistemas EV."
+                },
+                "Checkup do Sistema de Alta Tensão": {
+                    "categoria": "Sistema Elétrico EV",
+                    "intervalo_km": 20000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Alta",
+                    "descricao": "Inspeção visual e diagnóstica de bateria HV, cabos, conectores e alertas."
+                },
+                "Inspeção da Porta de Recarga e Vedação": {
+                    "categoria": "Sistema de Recarga",
+                    "intervalo_km": 20000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Média",
+                    "descricao": "Verificar conector, tampa, vedação, sujeira, oxidação e encaixe do plugue."
+                },
+                "Inspeção da Bateria 12V": {
+                    "categoria": "Sistema Elétrico EV",
+                    "intervalo_km": 20000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Alta",
+                    "descricao": "A bateria auxiliar alimenta módulos, acessórios e sistemas de controle."
+                },
+                "Inspeção do Sistema de Arrefecimento EV": {
+                    "categoria": "Arrefecimento e Térmica",
+                    "intervalo_km": 40000,
+                    "intervalo_meses": 24,
+                    "criticidade": "Alta",
+                    "descricao": "Verificar nível, vazamentos e condição do fluido térmico da bateria/inversor/motor."
+                },
+                "Substituição do Líquido de Arrefecimento EV": {
+                    "categoria": "Arrefecimento e Térmica",
+                    "intervalo_km": 150000,
+                    "intervalo_meses": 60,
+                    "criticidade": "Alta",
+                    "descricao": "Intervalo varia muito por fabricante; confirmar no manual do veículo."
+                },
+                "Inspeção do Óleo do Redutor / Unidade de Tração": {
+                    "categoria": "Powertrain EV",
+                    "intervalo_km": 60000,
+                    "intervalo_meses": 36,
+                    "criticidade": "Média",
+                    "descricao": "Alguns EVs possuem óleo do redutor/eixo elétrico com inspeção ou troca programada."
+                },
+                "Atualizações de Software e Diagnóstico": {
+                    "categoria": "Software e Diagnóstico",
+                    "intervalo_km": 20000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Média",
+                    "descricao": "Verificar alertas, campanhas, recalls, atualização de módulos e falhas registradas."
+                },
+                "Inspeção de Suspensão e Direção": {
+                    "categoria": "Chassi e Segurança",
+                    "intervalo_km": 20000,
+                    "intervalo_meses": 12,
+                    "criticidade": "Alta",
+                    "descricao": "Verificar buchas, pivôs, terminais, amortecedores, ruídos e folgas."
+                },
+                "Fluido do Lavador do Para-brisa": {
+                    "categoria": "Visibilidade e Segurança",
+                    "intervalo_km": 5000,
+                    "intervalo_meses": 1,
+                    "criticidade": "Baixa",
+                    "descricao": "Completar reservatório e verificar funcionamento dos esguichos."
+                }
+            }
+        },
+        "ultima_revisao": {
+            "Rodízio de Pneus": 0,
+            "Revisão Periódica": 0,
+            "Fluido de Freio": 0,
+            "Inspeção de Pneus e Calibragem": 0,
+            "Alinhamento e Balanceamento": 0,
+            "Filtro de Cabine": 0,
+            "Palhetas do Limpador": 0,
+            "Inspeção de Pastilhas, Discos e Pinças": 0,
+            "Limpeza e Lubrificação das Pinças de Freio": 0,
+            "Revisão Geral EV": 0,
+            "Checkup do Sistema de Alta Tensão": 0,
+            "Inspeção da Porta de Recarga e Vedação": 0,
+            "Inspeção da Bateria 12V": 0,
+            "Inspeção do Sistema de Arrefecimento EV": 0,
+            "Substituição do Líquido de Arrefecimento EV": 0,
+            "Inspeção do Óleo do Redutor / Unidade de Tração": 0,
+            "Atualizações de Software e Diagnóstico": 0,
+            "Inspeção de Suspensão e Direção": 0,
+            "Fluido do Lavador do Para-brisa": 0
+        },
+        "historico": [],
+        "historico_km": [
+            {
+                "km_anterior": 210,
+                "km_nova": 482,
+                "data": "05/06/2026 17:03"
+            }
+        ],
+        "historico_recargas": [
+            {
+                "data": "05/06/2026 17:02",
+                "km_atual": 210,
+                "bateria_inicial": 17.0,
+                "bateria_final": 100.0,
+                "energia_kwh": 68.0,
+                "preco_kwh": 0.63,
+                "custo_total": 42.84,
+                "local": "Casa",
+                "tipo": "Residencial"
+            }
+        ]
+    }
+]

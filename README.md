@@ -1,121 +1,164 @@
 # ⚡ EV Care
 
-O **EV Care** é um aplicativo em desenvolvimento histórico de uso e manutenções periódicas de forma simples e visual.O **EV Care** é um aplicativo em desenvolvimento para gestão de veículos elétricos.
+EV Care é um aplicativo web para acompanhamento de veículos elétricos.
 
-## 🚧 Status do projeto
+O objetivo do projeto é ajudar usuários a controlar quilometragem, recargas, custos, manutenções, histórico e relatórios do veículo em um único lugar.
 
-Este projeto está em fase **Beta funcional**.
+✅ Funcionalidades disponíveis
+Conta e autenticação
 
-A versão atual já possui os principais módulos operacionais, mas ainda está em evolução. No momento, os dados são armazenados em arquivos JSON locais. Futuramente, o projeto deve evoluir para login de usuários e banco de dados online.
+Criar conta
+Fazer login
+Fazer logout
+Dados separados por usuário
+Isolamento entre contas
 
-## 🎯 Objetivo
+Minha Garagem
 
-O objetivo do EV Care é ajudar proprietários de veículos elétricos a responder perguntas como:
+Cadastro de veículo
+Edição de veículo
+Exclusão de veículo
+Definição de veículo ativo
+Limite de veículos por plano
 
-- Quanto estou gastando com recargas?
-- Qual é meu custo real por km?
-- Qual é meu consumo real em km/kWh?
-- Quando devo fazer a próxima manutenção?
-- Minha viagem é possível com a autonomia atual?
-- Meu carro elétrico está sendo mais econômico que um carro a gasolina?
+Quilometragem
 
-## ✅ Funcionalidades atuais
+Atualização de KM atual
+Histórico de quilometragem
+Exportação CSV de quilometragem para usuários Plus
 
-### 🚗 Garagem
+Recargas
 
-- Cadastro de veículos pelo catálogo
-- Cadastro manual de veículos
-- Seleção de veículo ativo
-- Edição de veículo
-- Exclusão de veículo com confirmação
-- Salvamento do último veículo ativo
+Cadastro de recargas
+Histórico de recargas
+Edição de recargas
+Exclusão de recargas
+Resumo de energia, custo e preço médio
+Exportação CSV de recargas para usuários Plus
 
-### 🔋 Recargas
+Manutenções
 
-- Registro de recargas
-- Histórico de recargas
-- Edição de recargas
-- Exclusão de recargas
-- Cálculo de gasto total
-- Cálculo de preço médio do kWh
-- Cálculo de custo real aproximado por km
-- Cálculo de consumo real aproximado em km/kWh
+Plano padrão de manutenção
+Registro de manutenção realizada
+Cálculo de status: em dia, próximo ou vencido
+Serviços personalizados
+Histórico de manutenções
+Exportação CSV de manutenções para usuários Plus
 
-### 🛣️ Quilometragem
+Dashboard
 
-- Atualização de KM atual
-- Histórico de alterações de quilometragem
-- Uso da KM para cálculos reais de consumo, custo e manutenção
+Resumo geral do veículo
+Autonomia estimada
+Saúde estimada da bateria
+Recargas registradas
+Custos e eficiência
+Alertas de manutenção
+Relatório PDF do veículo para usuários Plus
+Relatório mensal para usuários Plus
 
-### 🛠️ Manutenções
+Custos e Economia
 
-- Plano expandido de manutenção para veículos elétricos
-- Registro de manutenções realizadas
-- Serviços personalizados
-- Edição de serviços de manutenção
-- Remoção de serviços do plano
-- Status de manutenção:
-  - Em dia
-  - Próximo
-  - Vencido
-- Cálculo da próxima manutenção com base na KM real em que o serviço foi registrado
+Comparação de custo do veículo elétrico com gasolina
+Custo estimado por km
+Custo real por km, quando houver dados suficientes
+Consumo real estimado
 
-### 📊 Dashboard
+Histórico
 
-- Resumo do veículo ativo
-- Autonomia estimada
-- Saúde estimada da bateria
-- Última recarga
-- Gasto total em recargas
-- Custo real por km
-- Consumo real aproximado
-- Alertas de manutenção
-- Próxima manutenção relevante
+Histórico de quilometragem
+Histórico de recargas
+Histórico de manutenções
 
-### 🧭 Viagens
+Feedback
 
-- Simulação de viagem
-- Estimativa de energia necessária
-- Estimativa de custo da viagem
-- Verificação de autonomia com margem de segurança
+Envio de feedback pelo app
+Salvamento do feedback no Supabase
+Notificação por e-mail ao responsável pelo projeto
 
-### 💰 Custos e Economia
+## 🚀 Status do projeto
 
-- Custo estimado por km do veículo elétrico
-- Comparação com carro a gasolina
-- Economia real aproximada com base em recargas
-- Simulador de economia por distância
+O EV Care está em fase **Beta**.
 
-### 📜 Histórico
+A versão atual já possui funcionalidades online com login, dados separados por usuário e recursos Free/Plus em teste.
 
-- Histórico de manutenções
-- Histórico de quilometragem
-- Histórico de recargas
 
-### ⚙️ Configurações
+🧪 Como testar o Beta
+Fluxo recomendado para novos testadores:
 
-- Diagnóstico do sistema
-- Salvamento manual
-- Backup dos dados
-- Importação de backup JSON
+Criar uma conta na aba Conta
+Cadastrar um veículo em Minha Garagem
+Atualizar a quilometragem em Quilometragem
+Registrar uma recarga em Recargas
+Registrar uma manutenção em Manutenções
+Conferir o Dashboard
+Conferir Custos e Economia
+Conferir o Histórico
+Enviar comentários pela aba Feedback
 
-## 🧰 Tecnologias usadas
+🆓 Plano Free
+O plano Free permite:
 
-- Python
-- Streamlit
-- JSON para armazenamento local
-- GitHub Codespaces para desenvolvimento online
-- GitHub para versionamento
+1 veículo cadastrado
+Quilometragem online
+Recargas online
+Manutenções online
+Dashboard básico
+Histórico básico
+Custos e economia
+Envio de feedback
 
-## Acesse o EV Care Beta
 
-- O aplicativo está diponível em:
-- https://rodrigomelo7080-beep-ev-care-app-6ajra2.streamlit.app/
+⭐ Plano Plus
+O plano Plus está em teste controlado e inclui:
 
-## ▶️ Como executar o projeto
+Veículos ilimitados
+Exportação CSV de recargas
+Exportação CSV de quilometragem
+Exportação CSV de manutenções
+Relatório PDF do veículo
+Relatório mensal
+Recursos avançados em evolução
 
-Instale as dependências:
 
-```bash
-python -m pip install -r requirements.txt
+📩 Feedback
+Durante o Beta, feedbacks são essenciais.
+Use a aba Feedback dentro do aplicativo para enviar:
 
+Problemas encontrados
+Sugestões de melhoria
+Dúvidas
+Ideias para novos recursos
+Interesse no plano Plus
+
+Evite enviar senhas, documentos, dados bancários ou informações sensíveis.
+
+⚠️ Limitações da versão Beta
+Esta versão ainda pode passar por mudanças de interface, regras de planos e organização interna.
+Algumas estimativas dependem da qualidade dos dados inseridos pelo usuário, como:
+
+Quilometragem atualizada
+Recargas registradas
+Manutenções lançadas corretamente
+Dados técnicos do veículo
+
+Os cálculos devem ser usados como apoio e não substituem recomendações técnicas, manuais do fabricante ou avaliação profissional.
+
+🛣️ Roadmap
+Próximas evoluções planejadas:
+
+Melhorias visuais no Dashboard
+Relatórios mensais em PDF
+Gráficos avançados de consumo
+Alertas inteligentes de manutenção
+Melhorias no onboarding de novos usuários
+Página pública de apresentação do EV Care
+Integração futura com pagamento
+
+📌 Observação
+Este projeto está em evolução contínua e faz parte da construção de um MVP funcional para gestão de veículos elétricos.
+
+## 🔗 Acesso ao aplicativo
+
+Acesse o EV Care pelo link público do Streamlit:
+
+https://rodrigomelo7080-beep-ev-care-app-6ajra2.streamlit.app/
